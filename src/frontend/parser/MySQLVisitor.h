@@ -299,14 +299,18 @@ bool parse_table_header(table_header *header,SQLParser::Create_tableContext *ctx
   // better way of doing this?
   auto fields = field_list->field();
   for (auto & e : fields) {  // FieldContext*
-    // std::cout << e->getText() << "\n";
-    // for (auto & value : e->children) {
-    //     std::cout << value->getText() << " | ";
-    // }
+    std::cout << e->getText() << "\n";
+    for (auto & value : e->children) {
+        std::cout << value->getText() << " | ";
+    }
 
     // TODO handle primary/foreign later
-    if (e->children.at(0)->getText() == "PRIMARY") continue;
+    if (e->children.at(0)->getText() == "PRIMARY") {
+      printf("Handle Private Key\n");
+      continue;
+    }
     if (e->children.at(0)->getText() == "FOREIGN") continue;
+
 
     // set column name
     std::strncpy(header->col_name[col_num], e->children.at(0)->getText().c_str(), MAX_TABLE_NAME_LEN);

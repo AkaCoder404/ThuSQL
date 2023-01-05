@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
     //     // }
     // }
 
-    std::string str_input = "CREATE DATABASE db;";
+    // std::string str_input = "CREATE DATABASE db;";
 
     antlr4::ANTLRInputStream input(stream);    // convert input to antlr format
     SQLLexer lexer(&input);                    // give input to lexer

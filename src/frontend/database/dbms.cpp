@@ -60,13 +60,7 @@ void dbms::show_databases() {
             temp = temp.substr(2);
             show_database(temp.c_str());
         }
-
-
     }
-
-        
-
-
 }
 
 void dbms::create_table(table_header *header) {
@@ -230,6 +224,5 @@ void dbms::select_rows(const char * table_name) {
     }
     std::cout << select << "\n";
 }
-
 
 void dbms::update_rows() {}
