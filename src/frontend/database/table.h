@@ -13,23 +13,26 @@ struct table_header {
     int records_num;                            // total number of records
     int primary_key_num;
     int check_constaint_num;
-    int foreign_key_num;
+    // flags
 	uint32_t flag_notnull;                      // flag which items are not null, 32 bits, one for each col
     uint32_t flag_primary;                      // flag primary col
     uint32_t flag_indexed;                      // flag which items are indexes
     uint32_t flag_unique;                       // flag which items must be unique
     uint32_t flag_default;                      // flag which items have default values
-
     int64_t auto_increment_row_id;              // track row_id
-    
-
+    // table columns stuff
     int col_length[MAX_COL_NUM];
     int col_offset[MAX_COL_NUM];                // offset from start
     int col_not_null[MAX_COL_NUM];
     uint8_t col_type[MAX_COL_NUM];
-    
     char col_name[MAX_COL_NUM][MAX_TABLE_NAME_LEN];
     char default_values[MAX_COL_NUM][MAX_DEFAULT_LEN];
+
+    // handle foreign key stuff
+    int foreign_key_num;
+    int foreign_keys[MAX_COL_NUM];
+    char foreign_key_ref_table[MAX_COL_NUM][MAX_TABLE_NAME_LEN];
+	char foreign_key_ref_column[MAX_COL_NUM][MAX_TABLE_NAME_LEN];
 };
 
 class table {

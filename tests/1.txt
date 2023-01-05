@@ -26,6 +26,5 @@ INSERT INTO Persons VALUES
 	('number', 100, 100, 100, 'Inorrect', 'Type'),
 	(100, 69, 12, 1.0, 'It', '0123456789012345678');
 
-
-
-	
+SELECT * FROM Persons;
+SELECT LastName, FirstName, Grade FROM Persons;

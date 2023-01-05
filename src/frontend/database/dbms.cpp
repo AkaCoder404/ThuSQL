@@ -173,7 +173,17 @@ void dbms::insert_rows(SQLParser::Insert_into_tableContext *ctx) {
     std::cout << "Successfully inserted " << success << " out of " << total << "\n";
 }
 
-void dbms::select_rows(const char * table_name) {
+
+
+bool select_row_by_cols(std::string cols, char *col) {
+    // if column name matches 
+    std::string match = "\"" + std::string(col) + "\"";
+    // std::cout << match << "|" << cols << "\n";
+    if (cols.find(match) == std::string::npos && cols != "\"*\"") return true;
+    return false;  
+}
+
+void dbms::select_rows(std::string cols, const char * table_name) {
     tprint("Selecting rows");   
     table* tb = curr_db->get_table(table_name);
     table_header *th = tb->get_table_header_p();
@@ -185,11 +195,14 @@ void dbms::select_rows(const char * table_name) {
     char *buffer = new char[size * 3];
     tb->select_record(buffer, size, 3); // TODO support not continuous storage
 
-    // TODO only return wanted cols
+    // TODO only return wanted cols s
+    int total_cols_selected = 0;
     tabulate::Table select;
     std::vector<variant<std::string, const char *, string_view, tabulate::Table>> header = {"rowid"};
     for (int i = 0; i < th->col_num; i++) {
+        if (select_row_by_cols(cols, th->col_name[i])) continue;
         header.push_back(th->col_name[i]);
+        total_cols_selected++;
     }
 
     select.add_row(header);
@@ -201,6 +214,7 @@ void dbms::select_rows(const char * table_name) {
         row.push_back(std::to_string(rowid));
 
         for (int j = 0; j < th->col_num; j++) {
+            if (select_row_by_cols(cols, th->col_name[j])) continue;
             if (th->col_type[j] == FIELD_TYPE_INT) {
                 int s; memcpy(&s, buffer + i * size + th->col_offset[j], th->col_length[j]);
                 row.push_back(std::to_string(s));
@@ -216,7 +230,7 @@ void dbms::select_rows(const char * table_name) {
         select.add_row(row);
     }
 
-    for (size_t i = 0; i < th->col_num + 1; ++i) {
+    for (size_t i = 0; i < total_cols_selected + 1; ++i) {
         select[0][i].format()
         .font_color(tabulate::Color::yellow)
         .font_align(tabulate::FontAlign::center)

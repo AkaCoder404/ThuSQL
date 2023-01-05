@@ -6,4 +6,26 @@ CREATE TABLE student (
     sex VARCHAR(4),
     status VARCHAR(32) NOT NULL
 );
+CREATE TABLE teacher (
+    id INT NOT NULL PRIMARY KEY,
+    name VARCHAR(32) NOT NULL,
+    sex VARCHAR(4)
+);
+CREATE TABLE course (
+    id INT NOT NULL PRIMARY KEY,
+    name VARCHAR(32) NOT NULL,
+    credit INT DEFAULT 0
+);
+CREATE TABLE course_detail (
+    course_id INT NOT NULL,
+    course_number INT NOT NULL,
+    teacher_id INT DEFAULT NULL,
+    description VARCHAR(4096),
+    PRIMARY KEY (course_id, course_number),
+    FOREIGN KEY (course_id) REFERENCES course(id),
+    FOREIGN KEY (teacher_id) REFERENCES teacher(id)
+);
 DESC student;
+DESC teacher;
+DESC course;
+DESC course_detail;

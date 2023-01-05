@@ -94,7 +94,7 @@ public:
     vprint("visit describe table");
     const char *table_name = (ctx->Identifier()->toString()).c_str();
     dbms::get_instance()->show_table(table_name);
-    dprint("Described table");
+    dprint("DESC table finished");
     return this->visitChildren(ctx);
   }
 
@@ -132,8 +132,21 @@ public:
     std::cout << ctx->getText() << "\n";
     std::cout << ctx->children.at(1)->getText() << "\n"; // cols
     std::string table_name = ctx->identifiers()->getText();
-    std::cout << table_name << "\n";
-    dbms::get_instance()->select_rows(table_name.c_str());
+    std::string cols = ctx->children.at(1)->getText();
+
+    for (int i = 0; i < cols.length(); i++) {
+      if (cols[i] == ',') {
+        cols.insert(i, "\"");
+        cols.insert(i+2,"\"");
+        i+=2;
+      }
+    }
+    cols = "\"" + cols + "\"";
+
+    std::cout << cols << "\n";
+
+
+    dbms::get_instance()->select_rows(cols, table_name.c_str());
     return this->visitChildren(ctx);
   }
 
@@ -286,6 +299,16 @@ public:
 
 };
 
+
+// table
+void handle_primary_key_composite(table_header *header) {
+
+}
+
+void handle_foreign_key() {
+
+}
+
 bool parse_table_header(table_header *header,SQLParser::Create_tableContext *ctx) {
   // std::cout << ctx->getText();
   std::strncpy(header->table_name, (ctx->Identifier()->getText()).c_str(),MAX_TABLE_NAME_LEN); 
@@ -303,13 +326,28 @@ bool parse_table_header(table_header *header,SQLParser::Create_tableContext *ctx
     for (auto & value : e->children) {
         std::cout << value->getText() << " | ";
     }
+    printf("\n");
 
-    // TODO handle primary/foreign later
-    if (e->children.at(0)->getText() == "PRIMARY") {
-      printf("Handle Private Key\n");
+    // Flag Primary Key (at end)
+    if ((e->getText().find("PRIMARYKEY") != std::string::npos) && (e->children.at(4)->getText() == "PRIMARY")) {
+      header->flag_primary |= 1 << col_num;
+      header->primary_key_num++;
+    }
+    
+    // PRIMARY KEY ()
+    if (e->getText().find("PRIMARYKEY(") != std::string::npos) {
+      // search for col
       continue;
     }
-    if (e->children.at(0)->getText() == "FOREIGN") continue;
+    
+    // Flag Primary Key Composite
+
+
+    // Flag Foreign Key
+    if (e->children.at(0)->getText() == "FOREIGN") {
+      
+      continue;
+    }
 
 
     // set column name
@@ -318,13 +356,14 @@ bool parse_table_header(table_header *header,SQLParser::Create_tableContext *ctx
     // set column type
     std::string type = e->children.at(1)->getText();
     std::string field_len;
-    // handle vchar()
+    
+    // handle vchar
     if (type.find("(") != std::string::npos) {
       field_len = type.substr(type.find("(") + 1);
       field_len = field_len.substr(0, field_len.size()-1);
       type = type.substr(0, type.find("("));
     }
-    
+    // set field type
     if (type == "INT") {
       header->col_type[col_num] = FIELD_TYPE_INT;
       header->col_length[col_num] = 4;
@@ -335,13 +374,12 @@ bool parse_table_header(table_header *header,SQLParser::Create_tableContext *ctx
       header->col_type[col_num] = FIELD_TYPE_VCHAR;
       header->col_length[col_num] = std::stoi(field_len); // + 1; // account for "\n";
     } else {
-      eprint("Not valid type");
+      eprint("not valid type");
       return false;
     }
 
     // only if IDENTIFIER FIELD_TYPE,
     if (e->children.size() <= 2) {
-    
       header->col_offset[col_num] = offset;
       offset += header->col_length[col_num];
       header->col_num = ++col_num;
@@ -352,7 +390,6 @@ bool parse_table_header(table_header *header,SQLParser::Create_tableContext *ctx
     std::string null = e->children.at(2)->getText();
     if (null == "NOT") {
       header->col_not_null[col_num] = 1;
-     
       header->col_length[col_num] = 4;
       header->col_offset[col_num] = offset;
       offset += header->col_length[col_num];

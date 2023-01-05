@@ -41,7 +41,7 @@ public:
     /* TODO records/rows */
     void insert_rows(SQLParser::Insert_into_tableContext *ctx);
     void delete_rows();
-    void select_rows(const char *table_name);
+    void select_rows(std::string cols, const char *table_name);
     void update_rows();
 
     static dbms* get_instance() {
