@@ -185,6 +185,7 @@ bool select_row_by_cols(std::string cols, char *col) {
 
 void dbms::select_rows(std::string cols, const char * table_name) {
     tprint("Selecting rows");   
+    int total_rows = 2;
     table* tb = curr_db->get_table(table_name);
     table_header *th = tb->get_table_header_p();
     std::cout << "Total Records in this table " << th->records_num << "\n";
@@ -192,8 +193,9 @@ void dbms::select_rows(std::string cols, const char * table_name) {
 
     int size = th->col_offset[th->col_num - 1] + th->col_length[th->col_num - 1];
     std::cout << "Size of one record in bytes: " << size << "\n";
-    char *buffer = new char[size * 3];
-    tb->select_record(buffer, size, 3); // TODO support not continuous storage
+    char *buffer = new char[size * total_rows];
+    memset((void *)buffer, 0, size * total_rows);
+    tb->select_record(buffer, size, total_rows); // TODO support not continuous storage
 
     // TODO only return wanted cols s
     int total_cols_selected = 0;
@@ -208,7 +210,7 @@ void dbms::select_rows(std::string cols, const char * table_name) {
     select.add_row(header);
 
     // TODO limit 
-    for (int i = 0; i < 2; i++) {
+    for (int i = 0; i < total_rows; i++) {
         std::vector<variant<std::string, const char *, string_view, tabulate::Table>> row = {};
         int rowid; memcpy(&rowid, buffer + i * size, 4);
         row.push_back(std::to_string(rowid));
