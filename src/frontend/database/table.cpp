@@ -66,9 +66,9 @@ void table::insert_record(char *buffer, int size) {
 }
 
 void table::select_record(char *buffer, int size, int count) {
-    // pg->read(buffer, size);         // read from cache or file?
-    for (int i = 0; i < count; i++) {       // read all records
-        pg->read(buffer + size * i, size, i);
-    }
+    pg->read(buffer, size, 0);         // read from cache or file?
+    //for (int i = 0; i < count; i++) {       // read all records
+    //    pg->read(buffer + size * i, size, i);
+    //}
 }
 
