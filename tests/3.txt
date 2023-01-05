@@ -1,0 +1,9 @@
+CREATE DATABASE curriculum;
+USE curriculum;
+CREATE TABLE student (
+    id INT NOT NULL PRIMARY KEY, 
+    name VARCHAR(32) NOT NULL,
+    sex VARCHAR(4),
+    status VARCHAR(32) NOT NULL
+);
+DESC student;

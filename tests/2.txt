@@ -1,0 +1,42 @@
+CREATE DATABASE curriculum;
+USE curriculum;
+CREATE TABLE student (
+    id INT NOT NULL PRIMARY KEY, 
+    name VARCHAR(32) NOT NULL,
+    sex VARCHAR(4),
+    status VARCHAR(32) NOT NULL
+);
+CREATE TABLE teacher (
+    id INT NOT NULL PRIMARY KEY,
+    name VARCHAR(32) NOT NULL,
+    sex VARCHAR(4)
+);
+CREATE TABLE course (
+    id INT NOT NULL PRIMARY KEY,
+    name VARCHAR(32) NOT NULL,
+    credit INT DEFAULT 0
+);
+CREATE TABLE course_detail (
+    course_id INT NOT NULL,
+    course_number INT NOT NULL,
+    teacher_id INT DEFAULT NULL,
+    description VARCHAR(4096),
+    PRIMARY KEY (course_id, course_number),
+    FOREIGN KEY (course_id) REFERENCES course(id),
+    FOREIGN KEY (teacher_id) REFERENCES teacher(id)
+);
+CREATE TABLE student_course (
+    student_id INT NOT NULL,
+    course_id INT NOT NULL,
+    course_number INT NOT NULL,
+    grade VARCHAR(3),
+    term VARCHAR(16) NOT NULL,
+    PRIMARY KEY (student_id, course_id, term),
+    FOREIGN KEY course_id_number(course_id, course_number) REFERENCES course_detail(course_id, course_number),
+    FOREIGN KEY (student_id) REFERENCES student(id)
+);
+INSERT INTO student_course VALUES (2077010001, 30240262, 0, '*', '2021-秋');
+UPDATE student_course SET grade = 'A' WHERE student_id = 2077010001 AND course_id = 30240262 AND term = '2021-秋';
+SELECT id FROM student WHERE name = '张三';
+SELECT id FROM course WHERE name ='数据库系统概论';
+SELECT grade FROM student_course WHERE student_id = 2077010001 AND course_id = 30240262;

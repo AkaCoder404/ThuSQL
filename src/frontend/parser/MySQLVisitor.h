@@ -308,7 +308,6 @@ bool parse_table_header(table_header *header,SQLParser::Create_tableContext *ctx
     if (e->children.at(0)->getText() == "PRIMARY") continue;
     if (e->children.at(0)->getText() == "FOREIGN") continue;
 
-
     // set column name
     std::strncpy(header->col_name[col_num], e->children.at(0)->getText().c_str(), MAX_TABLE_NAME_LEN);
     
