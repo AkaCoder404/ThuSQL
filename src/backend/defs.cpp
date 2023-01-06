@@ -1,5 +1,5 @@
 #include "defs.h"
-#define VLOG 1
+#define VLOG 0
 
 void eprint(const char *mes) {
     printf("\033[1;31m[ERROR]\033[0m %s\n", mes); // red

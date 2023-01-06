@@ -32,7 +32,7 @@ INSERT INTO Ident VALUES
 	(1, 'keys');
 
 SELECT * FROM Persons;
-SELECT LastName, FirstName, Grade FROM Persons;
+SELECT Grade, FirstName, LastName Persons WHERE Height = 12;
 
 DROP TABLE Persons;
 SHOW DATABASE db;

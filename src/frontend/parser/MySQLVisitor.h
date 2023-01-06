@@ -137,20 +137,20 @@ public:
     std::string cols = ctx->children.at(1)->getText();
     std::string where;
 
-    for (auto &e: ctx->children) {
-      std::cout << e->getText() << "| ";
-    }
-    printf("\n");
+    // for (auto &e: ctx->children) {
+    //   std::cout << e->getText() << "| ";
+    // }
+    // printf("\n");
     // TODO handle nested selects?
     // WHERE 
-    if (ctx->children.size() > 3) {
+    if (ctx->children.size() > 4) {
       // WHERE children
-      for (auto &e : ctx->children.at(5)->children) {
-        std::cout << e->getText() << " ";
-      }
+      // for (auto &e : ctx->children.at(5)->children) {
+      //   std::cout << e->getText() << " ";
+      // }
       where = ctx->children.at(5)->getText();
     }
-    printf("\n");
+    // printf("\n");
 
 
 
@@ -339,11 +339,11 @@ bool parse_table_header(table_header *header,SQLParser::Create_tableContext *ctx
   // better way of doing this?
   auto fields = field_list->field();
   for (auto & e : fields) {  // FieldContext*
-    std::cout << e->getText() << "\n";
-    for (auto & value : e->children) {
-        std::cout << value->getText() << " | ";
-    }
-    printf("\n");
+    // std::cout << e->getText() << "\n";
+    // for (auto & value : e->children) {
+    //     std::cout << value->getText() << " | ";
+    // }
+    // printf("\n");
 
     // Flag Primary Key (at end)
     if ((e->getText().find("PRIMARYKEY") != std::string::npos) && (e->children.at(4)->getText() == "PRIMARY")) {
