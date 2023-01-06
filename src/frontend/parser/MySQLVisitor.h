@@ -135,7 +135,27 @@ public:
     // TODO specific col select, nested query,
     std::string table_name = ctx->identifiers()->getText();
     std::string cols = ctx->children.at(1)->getText();
+    std::string where;
 
+    for (auto &e: ctx->children) {
+      std::cout << e->getText() << "| ";
+    }
+    printf("\n");
+    // TODO handle nested selects?
+    // WHERE 
+    if (ctx->children.size() > 3) {
+      // WHERE children
+      for (auto &e : ctx->children.at(5)->children) {
+        std::cout << e->getText() << " ";
+      }
+      where = ctx->children.at(5)->getText();
+    }
+    printf("\n");
+
+
+
+
+    // COLS to be selected
     for (int i = 0; i < cols.length(); i++) {
       if (cols[i] == ',') {
         cols.insert(i, "\"");
@@ -144,7 +164,7 @@ public:
       }
     }
     cols = "\"" + cols + "\"";
-    dbms::get_instance()->select_rows(cols, table_name.c_str());
+    dbms::get_instance()->select_rows(cols, where, table_name.c_str());
     return this->visitChildren(ctx);
   }
 
@@ -281,7 +301,6 @@ public:
 
     std::any visitIdentifiers(SQLParser::IdentifiersContext *ctx) override {
     vprint("visit identifier");
-    // std::cout << ctx->getText() << "\n";
     return this->visitChildren(ctx);
   }
 

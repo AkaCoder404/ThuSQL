@@ -30,6 +30,8 @@ class MyParserErrorListener: public antlr4::BaseErrorListener {
 void inputFromFile(char *fileName) {
     std::cout << "Reading from " << fileName << "\n";
     std::ifstream stream(fileName);
+
+
     antlr4::ANTLRInputStream input(stream);    // convert input to antlr format
     SQLLexer lexer(&input);                    // give input to lexer
     antlr4::CommonTokenStream tokens(&lexer);  // create tokens

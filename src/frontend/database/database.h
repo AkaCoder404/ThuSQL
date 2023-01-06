@@ -20,7 +20,7 @@ public:
     ~database();
     /* database */
     void create(const char *name);          // create database
-    void open(const char *name);            // open database
+    bool open(const char *name);            // open database
     void drop();                            // delete database
     void close();                           // close (current) database
     void show_database_info(bool show_tables);

@@ -11,7 +11,7 @@ database::database() {
 }
 
 database::~database() {
-    dprint("Closed Database");
+    // dprint("Closed Database");
     if(is_opened) close();
 }
 
@@ -24,17 +24,20 @@ void database::create(const char* name) {
 
 }
 
-void database::open(const char* name) {
+bool database::open(const char* name) {
     assert(!is_opened);
     std::string filename = name;
     filename += ".db"; 
 
     FILE *fp = fopen(filename.c_str(), "rb");
+    if (fp == NULL) {
+        return false;
+    }
+
+
     memset(&info, 0, sizeof(info));
     fread(&info, sizeof(info), 1, fp);
     fclose(fp);
-    
-    
     // read tables
     memset(tables, 0, sizeof(tables));
 	for(int i = 0; i < info.table_num; ++i) {
@@ -42,6 +45,7 @@ void database::open(const char* name) {
 		tables[i]->open(info.table_names[i]);
 	}
     is_opened = true;
+    return true;
 }
 
 void database::close() {

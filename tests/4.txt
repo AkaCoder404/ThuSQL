@@ -1,0 +1,2 @@
+USE db;
+SELECT LastName, Grade, FirstName FROM Persons WHERE FirstName = 'Blaze' AND LastName = 'It'; 

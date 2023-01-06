@@ -61,8 +61,8 @@ bool PageFileSystem::read(char *buffer, int size, int pageId) {
     std::cout << "Page Id: " << pageId << " FileId: " << fileId << "\n";
     int curr_index;
     BufType ba = bpm->getPage(fileId, pageId, curr_index);
-    memcpy(buffer, ba, 120);                         // cpy out
-    // memcpy(buffer + size, ba + size, 60);   / 
+    memcpy(buffer, ba, size);                         // cpy out
+    memcpy(buffer + size, ba + size, size);   //
 
 
     bpm->access(curr_index);                          // update cache

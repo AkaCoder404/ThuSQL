@@ -49,7 +49,11 @@ void dbms::show_database(const char *database_name) {
 
 void dbms::drop_database(const char *database_name) {
     database db;
-    db.open(database_name);
+    bool success = db.open(database_name);
+    if (!success) {
+        eprint("database does not exist, cannot drop");
+        return;
+    }
     db.drop(); 
 }
 
@@ -195,22 +199,28 @@ bool select_row_by_cols(std::string cols, char *col) {
     return false;  
 }
 
-void dbms::select_rows(std::string cols, const char * table_name) {
+bool check_where(std::string where, char *buff) {
+    
+
+    return true;
+}
+
+
+void dbms::select_rows(std::string cols, std::string where, const char * table_name) {
     tprint("Selecting rows");   
+    
     int total_rows = 5;
     table* tb = curr_db->get_table(table_name);
     table_header *th = tb->get_table_header_p();
     std::cout << "Total Records in this table " << th->records_num << "\n";
- 
 
     int size = th->col_offset[th->col_num - 1] + th->col_length[th->col_num - 1];
     std::cout << "Size of one record in bytes: " << size << "\n";
     // char *buffer = new char[size * total_rows];
     char *buffer = (char *)malloc(sizeof(char) * (size * total_rows));
     memset((void *)buffer, 0, size * total_rows);
-    tb->select_record(buffer, size, total_rows); // TODO support not continuous storage
+    tb->select_record(buffer, size, total_rows);
 
-    // TODO only return wanted cols s
     int total_cols_selected = 0;
     tabulate::Table select;
     std::vector<variant<std::string, const char *, string_view, tabulate::Table>> header = {"rowid"};
@@ -219,17 +229,69 @@ void dbms::select_rows(std::string cols, const char * table_name) {
         header.push_back(th->col_name[i]);
         total_cols_selected++;
     }
-
     select.add_row(header);
 
-    // TODO limit 
-    for (int i = 0; i < total_rows; i++) {
+    std::cout << where << "\n";
+    // find which column it is, TODO handle errors in where (column might not exists)
+    std::vector<std::pair<int, std::string>> vec = {};
+    for (int i = 0; i < th->col_num; i++) {
+        // std::cout << th->col_name[i] << " ";
+        std::string str(th->col_name[i]);
+        if (where.find("D" + str + "=") != std::string::npos) { //ANDcolname=5
+            int start = where.find(str) + strlen(th->col_name[i]) + 1;
+            std::string remaining = where.substr(start, where.length() - start);
+            int length = remaining.find("AND") == std::string::npos ? remaining.length() : remaining.find("AND");
+            std::cout << "found " << th->col_name[i] << "\n";
+            vec.push_back(std::make_pair(i, where.substr(start, length)));
+            continue;
+        }
+        if (where.find(str + "=") == 0) {                       // first entry
+            std::cout << "found " << th->col_name[i] << "\n";
+            int start = strlen(th->col_name[i]) + 1;
+            int length = where.find("AND") == std::string::npos ? where.length() - start : where.find("AND") - start;
+            vec.push_back(std::make_pair(i, where.substr(start, length)));
+        }
+    }
+
+    for (int i = 0; i < vec.size(); i++) {
+        std::cout << vec[i].first << vec[i].second << "\n";
+    }
+
+    // populate rows
+    for (int i = 0; i < total_rows, i < th->records_num; i++) {
         std::vector<variant<std::string, const char *, string_view, tabulate::Table>> row = {};
         int rowid; memcpy(&rowid, buffer + i * size, 4);
         row.push_back(std::to_string(rowid));
 
+        // TODO WHERE
+        bool match_row = true;
+        for (int j = 0; j < vec.size(); j++) {
+            if (th->col_type[vec[j].first] == FIELD_TYPE_INT) {
+                int s; memcpy(&s, buffer + i * size + th->col_offset[vec[j].first], th->col_length[vec[j].first]);
+                if (stoi(vec[j].second) != s) {
+                    match_row = false;
+                    break;
+                }
+            } else if (th->col_type[vec[j].first] == FIELD_TYPE_FLOAT) {
+                float s; memcpy(&s, buffer + i * size + th->col_offset[vec[j].first], th->col_length[vec[j].first]);
+                if (stof(vec[j].second) != s) {
+                    match_row = false;
+                    break;
+                }
+            } else if (th->col_type[vec[j].first] == FIELD_TYPE_VCHAR) {
+                char s[th->col_length[vec[j].first]];
+                memcpy(s, buffer + i * size + th->col_offset[vec[j].first], th->col_length[vec[j].first]);
+                if (vec[j].second != s) {
+                    match_row = false;
+                    break;
+                }
+            }
+        }
+        if (!match_row) continue;
+
         for (int j = 0; j < th->col_num; j++) {
-            if (select_row_by_cols(cols, th->col_name[j])) continue;
+            if (select_row_by_cols(cols, th->col_name[j])) continue; 
+            
             if (th->col_type[j] == FIELD_TYPE_INT) {
                 int s; memcpy(&s, buffer + i * size + th->col_offset[j], th->col_length[j]);
                 row.push_back(std::to_string(s));
@@ -245,6 +307,7 @@ void dbms::select_rows(std::string cols, const char * table_name) {
         select.add_row(row);
     }
 
+    // style header
     for (size_t i = 0; i < total_cols_selected + 1; ++i) {
         select[0][i].format()
         .font_color(tabulate::Color::yellow)
@@ -252,7 +315,6 @@ void dbms::select_rows(std::string cols, const char * table_name) {
         .font_style({tabulate::FontStyle::bold});
     }
     std::cout << select << "\n";
-
     free(buffer);
 }
 
