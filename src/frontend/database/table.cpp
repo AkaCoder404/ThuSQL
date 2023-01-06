@@ -17,19 +17,15 @@ void table::create(const table_header* header) {
 }
 
 void table::open(const char *name) {
-    // read header 
+    // read table header 
     table_name = name;
     std::string thead_filename = table_name + ".thead";
     FILE *fp = fopen(thead_filename.c_str(), "rb");
     fread(&header, sizeof(header), 1, fp);
     fclose(fp);
 
-
-
     // read data
     std::string tdata_filename = table_name + ".tdata";
-    // FILE *fp = fopen(tdata_filename.c_str(), "rb");
-    // fclose(fp);
     pg = new PageFileSystem(tdata_filename.c_str());
     is_open = true;
 }
@@ -39,9 +35,9 @@ void table::drop() {
     close();
     std::string thead = table_name + ".thead";
     std::string tdata = table_name + ".tdata";
-    std::remove(thead.c_str());
     std::remove(tdata.c_str());
-
+    std::remove(thead.c_str());
+    // std::remove(tdata.c_str());
 }
 
 void table::close() {

@@ -36,12 +36,22 @@ void dbms::open_database(const char *database_name) {
 }
 
 void dbms::show_database(const char *database_name) {
-    database db;
-    db.open(database_name);
-    db.show_database_info(true);
+    // database db;
+    // db.open(database_name);
+    // db.show_database_info(true);
+
+    if (!curr_db) {
+        eprint("use database before showing");
+        return;
+    }
+    curr_db->show_database_info(true);
 }
 
-void dbms::drop_database(const char *database_name) {}
+void dbms::drop_database(const char *database_name) {
+    database db;
+    db.open(database_name);
+    db.drop(); 
+}
 
 void dbms::close_database() {
     if (curr_db) {
@@ -69,6 +79,10 @@ void dbms::create_table(table_header *header) {
 
 void dbms::show_table(const char *table_name) {
     curr_db->show_table(table_name);
+}
+
+void dbms::drop_table(const char *table_name) {
+    curr_db->drop_table(table_name);
 }
 
 void dbms::insert_rows(SQLParser::Insert_into_tableContext *ctx) {
@@ -173,8 +187,6 @@ void dbms::insert_rows(SQLParser::Insert_into_tableContext *ctx) {
     std::cout << "Successfully inserted " << success << " out of " << total << "\n";
 }
 
-
-
 bool select_row_by_cols(std::string cols, char *col) {
     // if column name matches 
     std::string match = "\"" + std::string(col) + "\"";
@@ -185,7 +197,7 @@ bool select_row_by_cols(std::string cols, char *col) {
 
 void dbms::select_rows(std::string cols, const char * table_name) {
     tprint("Selecting rows");   
-    int total_rows = 2;
+    int total_rows = 5;
     table* tb = curr_db->get_table(table_name);
     table_header *th = tb->get_table_header_p();
     std::cout << "Total Records in this table " << th->records_num << "\n";
@@ -193,7 +205,8 @@ void dbms::select_rows(std::string cols, const char * table_name) {
 
     int size = th->col_offset[th->col_num - 1] + th->col_length[th->col_num - 1];
     std::cout << "Size of one record in bytes: " << size << "\n";
-    char *buffer = new char[size * total_rows];
+    // char *buffer = new char[size * total_rows];
+    char *buffer = (char *)malloc(sizeof(char) * (size * total_rows));
     memset((void *)buffer, 0, size * total_rows);
     tb->select_record(buffer, size, total_rows); // TODO support not continuous storage
 
@@ -239,6 +252,8 @@ void dbms::select_rows(std::string cols, const char * table_name) {
         .font_style({tabulate::FontStyle::bold});
     }
     std::cout << select << "\n";
+
+    free(buffer);
 }
 
 void dbms::update_rows() {}

@@ -26,9 +26,11 @@ public:
     return this->visitChildren(ctx);
   }
   std::any visitDrop_db(SQLParser::Drop_dbContext *ctx) override {
-  vprint("visit drop db");
-  return this->visitChildren(ctx);
-}
+    vprint("visit drop db");
+    const char *database_name = (ctx->Identifier()->toString()).c_str();
+    dbms::get_instance()->drop_database(database_name);
+    return this->visitChildren(ctx);
+  }
   std::any visitShow_db(SQLParser::Show_dbContext *ctx) override {
     vprint("visit show db");
     const char *database_name = (ctx->Identifier()->toString()).c_str();
@@ -87,6 +89,8 @@ public:
 
     std::any visitDrop_table(SQLParser::Drop_tableContext *ctx) override {
     vprint("visit drop table");
+    const char *table_name = (ctx->Identifier()->toString()).c_str();
+    dbms::get_instance()->drop_table(table_name);
     return this->visitChildren(ctx);
   }
 
@@ -129,8 +133,6 @@ public:
     std::any visitSelect_table(SQLParser::Select_tableContext *ctx) override {
     vprint("visit select table");
     // TODO specific col select, nested query,
-    std::cout << ctx->getText() << "\n";
-    std::cout << ctx->children.at(1)->getText() << "\n"; // cols
     std::string table_name = ctx->identifiers()->getText();
     std::string cols = ctx->children.at(1)->getText();
 
@@ -142,10 +144,6 @@ public:
       }
     }
     cols = "\"" + cols + "\"";
-
-    std::cout << cols << "\n";
-
-
     dbms::get_instance()->select_rows(cols, table_name.c_str());
     return this->visitChildren(ctx);
   }

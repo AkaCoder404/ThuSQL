@@ -1,4 +1,5 @@
 #include "defs.h"
+#define VLOG 0
 
 void eprint(const char *mes) {
     printf("\033[1;31m[ERROR]\033[0m %s\n", mes); // red
@@ -13,6 +14,7 @@ void dprint(const char *mes) {
 }
 
 void vprint(const char *mes) {
+    if (!VLOG) return;
     printf("\033[0;33m[VISIT]\033[0m %s\n", mes); // yellow
 }
 

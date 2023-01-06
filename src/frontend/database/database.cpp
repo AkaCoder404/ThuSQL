@@ -9,6 +9,7 @@
 database::database() { 
     is_opened = false;
 }
+
 database::~database() {
     dprint("Closed Database");
     if(is_opened) close();
@@ -26,8 +27,8 @@ void database::create(const char* name) {
 void database::open(const char* name) {
     assert(!is_opened);
     std::string filename = name;
-    filename += ".db";
-    // read db
+    filename += ".db"; 
+
     FILE *fp = fopen(filename.c_str(), "rb");
     memset(&info, 0, sizeof(info));
     fread(&info, sizeof(info), 1, fp);
@@ -44,6 +45,7 @@ void database::open(const char* name) {
 }
 
 void database::close() {
+    tprint("closing db");
     assert(is_opened);
     // close all tables
     for(table *tb : tables) {
@@ -63,7 +65,20 @@ void database::close() {
 
 }
 
-void database::drop() {}
+void database::drop() {
+    assert(is_opened);
+    for(table *tb: tables) {
+        if (tb != nullptr) {
+            tb->drop();
+            delete tb;
+            tb = nullptr;
+        }
+    }
+    std::string filename = info.database_name;
+    filename += ".db";
+    std::remove(filename.c_str());
+    is_opened = false;
+}
 
 void database::show_database_info(bool show_tables) {
     tabulate::Table database_info;
@@ -122,6 +137,7 @@ void database::create_table(table_header *header) {
     if (get_table(header->table_name)) {
         eprint("Table already exists");
     } else {
+        printf("create table %d\n", info.table_num);
         int id = info.table_num++;
         strncpy(info.table_names[id], header->table_name, MAX_TABLE_NAME_LEN);
         tables[id] = new table;
@@ -225,4 +241,27 @@ int database::get_table_id(const char *name) {
         }
 	}
 	return -1;
+}
+
+void database::drop_table(const char *table_name) {
+    assert(is_opened);
+
+    if (!get_table(table_name)) {
+        eprint("Table Does Not Exists");
+        return;
+    }
+    int row = get_table_id(table_name);
+    table* t = get_table(row);
+    std::cout << row << table_name << info.table_num << "\n";
+
+    // switch table names
+    memset(info.table_names[row], 0, 32 * sizeof(char));
+    memcpy(info.table_names[row], info.table_names[info.table_num - 1], 32 * sizeof(char));
+    memset(info.table_names[info.table_num - 1], 0, 32 * sizeof(char));
+    // switch table
+    tables[row] = tables[info.table_num - 1];
+    tables[info.table_num - 1]  = nullptr;
+    info.table_num--;
+    t->drop();
+    dprint("Dropped Table");
 }
