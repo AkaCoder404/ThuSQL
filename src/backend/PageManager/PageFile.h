@@ -37,7 +37,7 @@ public:
     bool close();                                       // TODO: close file, and write everything to it
     bool write(const char* buffer, int size);           // TODO: write to cache
     bool flush();                                       // TODO: flush cache, write to file
-    bool new_page();                                    // TODO: allocate new page
+    bool new_page(int curr_index);                                    // TODO: allocate new page
     bool free_page();                                   //
     bool read();
     bool read(char *buffer, int size, int pageId);
@@ -46,6 +46,12 @@ public:
 
     // 
     PageHeader page_headers[MAX_FILE_NUM];  // contains details about each page
+
+    int bytes_remaining = 8192;
+    int empty_position = 0;
+    bool uninitialized = true;
+    BufType b; 
+
 
 
     // our backend
