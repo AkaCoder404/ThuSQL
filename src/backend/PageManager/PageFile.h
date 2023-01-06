@@ -47,6 +47,12 @@ public:
     // 
     PageHeader page_headers[MAX_FILE_NUM];  // contains details about each page
 
+    int bytes_remaining = 8192;
+    int empty_position = 0;
+    bool uninitialized = true;
+    BufType b; 
+
+
 
     // our backend
     // MyBitMap::initConst();   //新加的初始化
