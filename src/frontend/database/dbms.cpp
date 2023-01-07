@@ -9,7 +9,7 @@
 dbms::dbms() { }
 dbms::~dbms() { 
     curr_db->close(); 
-    dprint("Good bye!!!");
+    dprint("Leaving ThuSQL DBMS, goodbye!!!");
 }
 
 void dbms::create_database(const char *database_name) {
@@ -158,7 +158,7 @@ void dbms::insert_rows(SQLParser::Insert_into_tableContext *ctx) {
         // TODO initialize defaults
         memset(temp_record, 0, size);
         memcpy(temp_record, &th->auto_increment_row_id, 4); 
-        std::cout << "init tmp record: " << th->auto_increment_row_id << "\n";
+        // std::cout << "init tmp record: " << th->auto_increment_row_id << "\n";
         th->auto_increment_row_id++;
         th->records_num++;
         // tb->increase_record_count();
@@ -187,8 +187,9 @@ void dbms::insert_rows(SQLParser::Insert_into_tableContext *ctx) {
         tb->insert_record(temp_record, size);
         delete []temp_record;
     }
-    // 
-    std::cout << "Successfully inserted " << success << " out of " << total << "\n";
+    std::string message = "Insert OK " + std::to_string(success) + " out of " + std::to_string(total);
+    dprint(message.c_str());
+    // std::cout << "Successfully inserted " << success << " out of " << total << "\n";
 }
 
 void dbms::delete_rows(std::string where, const char *table_name) {
@@ -242,7 +243,7 @@ void dbms::delete_rows(std::string where, const char *table_name) {
     }
     char *buffer = (char *)malloc(sizeof(char) * (size_of_record * read_rows));
     while (start >= 0) {
-        std::cout << "start: " << start << "\n";
+        std::cout << "start: " << start << " records to read " << records_to_read << "\n";
         memset((void *)buffer, 0, size_of_record * read_rows);
 
         if (records_to_read == read_rows) tb->select_record(start, buffer, size_of_record, read_rows);
@@ -250,7 +251,7 @@ void dbms::delete_rows(std::string where, const char *table_name) {
 
         // delete
         int last_record = records_to_read;
-        for (int i = last_record; i >= 0; i--) {
+        for (int i = last_record - 1; i >= 0; i--) {
             int rowid; memcpy(&rowid, buffer + i * size_of_record, 4);
             std::cout << "rowid" << rowid << "\n";
 
@@ -282,22 +283,29 @@ void dbms::delete_rows(std::string where, const char *table_name) {
             if (!match_row) continue;
             
             // row matches
-            tb->delete_record(rowid, size_of_record);
-            th->records_num--;
-            th->auto_increment_row_id--;
-            count_deleted++;
+            // tb->delete_record(rowid, size_of_record);
+            // th->records_num--;
+            // th->auto_increment_row_id--;
+            // count_deleted++;
         }
-        free(buffer);
+
+        // if (records_to_read != read_rows) {
+
+        // }
+
+        if (records_to_read != read_rows) {
+            records_to_read = read_rows;
+        }
+
         start -= read_rows;
+        // std::cout << "start: " << start << " records to read " << records_to_read << "\n";
     }
     std::string message = "deleted total rows of " + std::to_string(count_deleted);
+    free(buffer);
     dprint(message.c_str());
 }
 
-
-void match_rows() {
-
-}
+void match_rows() {}
 
 bool select_row_by_cols(std::string cols, char *col) {
     // if column name matches 
@@ -305,7 +313,6 @@ bool select_row_by_cols(std::string cols, char *col) {
     if (cols.find(match) == std::string::npos && cols != "\"*\"") return true;
     return false;  
 }
-
 
 void dbms::select_rows(std::string cols, std::string where, const char * table_name) {
     tprint("Selecting rows");   

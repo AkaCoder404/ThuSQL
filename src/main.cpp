@@ -27,21 +27,68 @@ class MyParserErrorListener: public antlr4::BaseErrorListener {
   }
 };
 
+// read sql queries from file
 void inputFromFile(char *fileName) {
     std::cout << "Reading from " << fileName << "\n";
-    std::ifstream stream(fileName);
-
-
-    antlr4::ANTLRInputStream input(stream);    // convert input to antlr format
-    SQLLexer lexer(&input);                    // give input to lexer
-    antlr4::CommonTokenStream tokens(&lexer);  // create tokens
-    SQLParser parser(&tokens);                 // create translation that will parse input
-
-    tokens.fill();
     MySQLVisitor visitor;
-    auto res = visitor.visitProgram(parser.program());
+
+    std::fstream new_file;
+    new_file.open(fileName, std::ios::in); //open a file to perform read operation using file object
+    
+    if (new_file.is_open()){   //checking whether the file is open
+        std::string query = "";
+        std::string line;
+        while(getline(new_file, line)){
+            query += line;
+            if (query.find(";") == std::string::npos) {
+                continue;
+            } 
+            std::cout << query << "\n";
+            antlr4::ANTLRInputStream input(query.c_str());
+            SQLLexer lexer(&input);                    // give input to lexer
+            antlr4::CommonTokenStream tokens(&lexer);  // create tokens
+            SQLParser parser(&tokens);                 // create translation that will parse input
+
+            MyParserErrorListener errorListner;        // custom error handling
+            parser.removeErrorListeners();             // remove any default error handling
+            parser.addErrorListener(&errorListner);    // add custom error handling
+
+            tokens.fill();
+            try {
+                std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+                auto res = visitor.visitProgram(parser.program());
+                std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+                std::string time_dif = "Query OK in " 
+                    +  std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) 
+                    + " (us)";
+                dprint(time_dif.c_str());
+            }
+            catch (std::exception& e) {
+                eprint("Query FAILED with Syntax Error");
+                std::cout << e.what() << "\n";
+            }
+
+            query = "";
+        }
+        new_file.close(); 
+    }
+
+
+
+    // std::ifstream stream(fileName);
+
+
+    // antlr4::ANTLRInputStream input(stream);    // convert input to antlr format
+    // SQLLexer lexer(&input);                    // give input to lexer
+    // antlr4::CommonTokenStream tokens(&lexer);  // create tokens
+    // SQLParser parser(&tokens);                 // create translation that will parse input
+
+    // tokens.fill();
+    // MySQLVisitor visitor;
+    // auto res = visitor.visitProgram(parser.program());
 }
 
+// read sql queries from terminal
 void gui() {
     std::string line;
     MySQLVisitor visitor;
