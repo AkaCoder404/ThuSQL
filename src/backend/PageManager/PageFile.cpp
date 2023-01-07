@@ -96,6 +96,7 @@ bool PageFileSystem::row_delete(int rowId, int size) {
     ::read(fm->fd[fileId], endingRow, size-4);
     lseek(fm->fd[fileId], (rowId-1)*size+4, SEEK_SET);
     ::write(fm->fd[fileId], endingRow, size-4);
+    return true;
 }
 
 bool PageFileSystem::mark_dirty() {
