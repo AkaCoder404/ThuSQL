@@ -282,6 +282,7 @@ void dbms::delete_rows(std::string where, const char *table_name) {
             if (!match_row) continue;
             
             // row matches
+            std::cout << "Row matches, attempting to call delete on rowid: " << rowid << std::endl;
             tb->delete_record(rowid, size_of_record);
             th->records_num--;
             th->auto_increment_row_id--;

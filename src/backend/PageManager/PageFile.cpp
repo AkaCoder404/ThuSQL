@@ -90,13 +90,18 @@ bool PageFileSystem::read(int start, char *buffer, int size, int count) {
 }
 
 bool PageFileSystem::row_delete(int rowId, int size) {
-    std::cout << " Deleting row id of: " << rowId << std::endl;
-    char* endingRow;
-    lseek(fm->fd[fileId], -size+4, SEEK_END);
+    std::cout << "row_delete called, physically deleting row id of: " << rowId-1 << std::endl;
+    char* endingRow = new char[56];
+    lseek(fm->fd[fileId], -(size-4), SEEK_END);
     ::read(fm->fd[fileId], endingRow, size-4);
-    lseek(fm->fd[fileId], (rowId-1)*size+4, SEEK_SET);
+    lseek(fm->fd[fileId], ((rowId-1)*size)+4, SEEK_SET);
     ::write(fm->fd[fileId], endingRow, size-4);
+    delete[] endingRow;
     return true;
+}
+
+bool PageFileSystem::row_update(int rowId, int size) {
+
 }
 
 bool PageFileSystem::mark_dirty() {
