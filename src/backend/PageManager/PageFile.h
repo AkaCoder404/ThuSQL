@@ -25,7 +25,7 @@ class PageFileSystem {
 private:
     int fileId;
     int pageId;
-    std::string filename;
+    std::string currpath;
     
 public:
     PageFileSystem();

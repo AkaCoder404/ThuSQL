@@ -34,8 +34,6 @@ INSERT INTO Ident VALUES
 SELECT * FROM Persons;
 SELECT Grade, FirstName, LastName Persons WHERE Height = 12;
 
-DROP TABLE Persons;
-SHOW DATABASE db;
 
 
 
