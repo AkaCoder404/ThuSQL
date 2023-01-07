@@ -191,32 +191,91 @@ void dbms::insert_rows(SQLParser::Insert_into_tableContext *ctx) {
     std::cout << "Successfully inserted " << success << " out of " << total << "\n";
 }
 
+void dbms::delete_rows(std::string where, const char *table_name) {
+    tprint("deleting rows");
+    table* tb = curr_db->get_table(table_name);
+    table_header *th = tb->get_table_header_p();
+
+    int size_of_record = th->col_offset[th->col_num - 1] + th->col_length[th->col_num - 1];
+    std::cout << "Total Records in this table: " << th->records_num << "\n";
+    std::cout << "Size of one record in bytes: " << size_of_record << "\n";
+
+    // WHERE 
+    std::vector<std::pair<int, std::string>> vec = {};
+    for (int i = 0; i < th->col_num; i++) {
+        std::string str(th->col_name[i]);
+        if (where.find("D" + str + "=") != std::string::npos) { //ANDcolname=5
+            int start = where.find(str) + strlen(th->col_name[i]) + 1;
+            std::string remaining = where.substr(start, where.length() - start);
+            int length = remaining.find("AND") == std::string::npos ? remaining.length() : remaining.find("AND");
+            // std::cout << "found " << th->col_name[i] << "\n";
+            vec.push_back(std::make_pair(i, where.substr(start, length)));
+            continue;
+        }
+        if (where.find(str + "=") == 0) {                       // first entry
+            // std::cout << "found " << th->col_name[i] << "\n";
+            int start = strlen(th->col_name[i]) + 1;
+            int length = where.find("AND") == std::string::npos ? where.length() - start : where.find("AND") - start;
+            vec.push_back(std::make_pair(i, where.substr(start, length)));
+        }
+    }
+
+    for (int i = 0; i < vec.size(); i++) {
+        std::cout << vec[i].first << vec[i].second << "\n";
+    }
+    return;
+
+    std::cout << "where" << where << "\n";
+    int count_deleted = 0;
+    int read_rows =  ;         // read 10 records at a time
+    int row = 0;
+    char *buffer = (char *)malloc(sizeof(char) * size_of_record * read_rows);
+    while (row < th->records_num) {
+        memset((void *)buffer, 0, size_of_record * read_rows);
+        bool match_record = false;
+
+
+
+
+
+
+
+
+        if (match_record) {
+            // tb->delete_record();
+        }
+        free(buffer);
+        th->records_num--;
+        th->auto_increment_row_id--;
+    }
+    std::string message = "deleted total rows of";
+    tprint("Done Deleting Rows");
+}
+
+
+
+
 bool select_row_by_cols(std::string cols, char *col) {
     // if column name matches 
     std::string match = "\"" + std::string(col) + "\"";
-    // std::cout << match << "|" << cols << "\n";
     if (cols.find(match) == std::string::npos && cols != "\"*\"") return true;
     return false;  
-}
-
-bool check_where(std::string where, char *buff) {
-    
-
-    return true;
 }
 
 
 void dbms::select_rows(std::string cols, std::string where, const char * table_name) {
     tprint("Selecting rows");   
-    
     int total_rows = 5;
+    int show_rows = 10;
     table* tb = curr_db->get_table(table_name);
     table_header *th = tb->get_table_header_p();
-    std::cout << "Total Records in this table " << th->records_num << "\n";
-
+  
     int size = th->col_offset[th->col_num - 1] + th->col_length[th->col_num - 1];
+    std::cout << "Total Records in this table " << th->records_num << "\n";
     std::cout << "Size of one record in bytes: " << size << "\n";
-    // char *buffer = new char[size * total_rows];
+
+    // reasd size * total row bytes
+    total_rows = th->records_num;
     char *buffer = (char *)malloc(sizeof(char) * (size * total_rows));
     memset((void *)buffer, 0, size * total_rows);
     tb->select_record(buffer, size, total_rows);
@@ -231,34 +290,34 @@ void dbms::select_rows(std::string cols, std::string where, const char * table_n
     }
     select.add_row(header);
 
-    std::cout << where << "\n";
+    // std::cout << where << "\n";
     // find which column it is, TODO handle errors in where (column might not exists)
     std::vector<std::pair<int, std::string>> vec = {};
     for (int i = 0; i < th->col_num; i++) {
-        // std::cout << th->col_name[i] << " ";
         std::string str(th->col_name[i]);
         if (where.find("D" + str + "=") != std::string::npos) { //ANDcolname=5
             int start = where.find(str) + strlen(th->col_name[i]) + 1;
             std::string remaining = where.substr(start, where.length() - start);
             int length = remaining.find("AND") == std::string::npos ? remaining.length() : remaining.find("AND");
-            std::cout << "found " << th->col_name[i] << "\n";
+            // std::cout << "found " << th->col_name[i] << "\n";
             vec.push_back(std::make_pair(i, where.substr(start, length)));
             continue;
         }
         if (where.find(str + "=") == 0) {                       // first entry
-            std::cout << "found " << th->col_name[i] << "\n";
+            // std::cout << "found " << th->col_name[i] << "\n";
             int start = strlen(th->col_name[i]) + 1;
             int length = where.find("AND") == std::string::npos ? where.length() - start : where.find("AND") - start;
             vec.push_back(std::make_pair(i, where.substr(start, length)));
         }
     }
 
-    for (int i = 0; i < vec.size(); i++) {
-        std::cout << vec[i].first << vec[i].second << "\n";
-    }
+    // for (int i = 0; i < vec.size(); i++) {
+    //     std::cout << vec[i].first << vec[i].second << "\n";
+    // }
 
     // populate rows
-    for (int i = 0; i < total_rows, i < th->records_num; i++) {
+    int rows_added = 0;
+    for (int i = 0; i < th->records_num && rows_added < 5; i++) {
         std::vector<variant<std::string, const char *, string_view, tabulate::Table>> row = {};
         int rowid; memcpy(&rowid, buffer + i * size, 4);
         row.push_back(std::to_string(rowid));
@@ -289,6 +348,7 @@ void dbms::select_rows(std::string cols, std::string where, const char * table_n
         }
         if (!match_row) continue;
 
+        // row matches
         for (int j = 0; j < th->col_num; j++) {
             if (select_row_by_cols(cols, th->col_name[j])) continue; 
             
@@ -305,6 +365,7 @@ void dbms::select_rows(std::string cols, std::string where, const char * table_n
             }
         }
         select.add_row(row);
+        rows_added++;
     }
 
     // style header

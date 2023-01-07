@@ -37,4 +37,4 @@ SELECT Grade, FirstName, LastName Persons WHERE Height = 12;
 
 
 
-
+INSERT INTO Persons VALUES (420, 69, 12, 1.0, 'It', 'Blaze');

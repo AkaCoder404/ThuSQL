@@ -63,8 +63,9 @@ void table::insert_record(char *buffer, int size) {
 
 void table::select_record(char *buffer, int size, int count) {
     pg->read(buffer, size, count);         // read from cache or file? temporarily directly read from file
-    //for (int i = 0; i < count; i++) {       // read all records
-    //    pg->read(buffer + size * i, size, i);
-    //}
+}
+
+void table::delete_record(int row_id, int size) {
+    // how to delete 
 }
 

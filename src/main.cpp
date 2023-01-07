@@ -66,13 +66,13 @@ void gui() {
             std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
             auto res = visitor.visitProgram(parser.program());
             std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-            std::string time_dif = "Command Finished in " 
+            std::string time_dif = "Query OK in " 
                 +  std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) 
                 + "microseconds";
             dprint(time_dif.c_str());
         }
         catch (std::exception& e) {
-            eprint("Syntax Error");
+            eprint("Query FAILED with Syntax Error");
             std::cout << e.what() << "\n";
         }
     }

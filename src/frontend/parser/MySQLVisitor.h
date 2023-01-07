@@ -111,12 +111,15 @@ public:
     return this->visitChildren(ctx);
   }
 
-    std::any visitDelete_from_table(SQLParser::Delete_from_tableContext *ctx) override {
-    vprint("visit delete from table");
+  std::any visitDelete_from_table(SQLParser::Delete_from_tableContext *ctx) override {
+    vprint("visit delete from table");  // DELETE FROM table_name WHERE
+    std::string table_name = ctx->children.at(2)->getText();
+    std::string where = ctx->children.at(4)->getText();
+    dbms::get_instance()->delete_rows(where, table_name.c_str());
     return this->visitChildren(ctx);
   }
 
-    std::any visitUpdate_table(SQLParser::Update_tableContext *ctx) override {
+  std::any visitUpdate_table(SQLParser::Update_tableContext *ctx) override {
     vprint("visit update table");
     return this->visitChildren(ctx);
   }
@@ -137,10 +140,6 @@ public:
     std::string cols = ctx->children.at(1)->getText();
     std::string where;
 
-    // for (auto &e: ctx->children) {
-    //   std::cout << e->getText() << "| ";
-    // }
-    // printf("\n");
     // TODO handle nested selects?
     // WHERE 
     if (ctx->children.size() > 4) {
@@ -150,10 +149,6 @@ public:
       // }
       where = ctx->children.at(5)->getText();
     }
-    // printf("\n");
-
-
-
 
     // COLS to be selected
     for (int i = 0; i < cols.length(); i++) {

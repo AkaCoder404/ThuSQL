@@ -40,7 +40,7 @@ public:
 
     /* TODO records/rows */
     void insert_rows(SQLParser::Insert_into_tableContext *ctx);
-    void delete_rows();
+    void delete_rows(std::string where, const char *table_name);
     void select_rows(std::string cols, std::string where, const char *table_name);
     void update_rows();
 
