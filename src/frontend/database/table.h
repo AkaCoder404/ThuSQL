@@ -62,7 +62,7 @@ public:
 
     /* records */   
     void insert_record(char* buffer, int size);            // write to page file/cache
-    void select_record(char* buffer, int size, int count); // select record
+    void select_record(int start, char* buffer, int size, int count); // select record
     void delete_record(int row_id, int size);              // delete record with x row_id
 
     /* cache */ 

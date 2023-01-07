@@ -39,8 +39,7 @@ public:
     bool flush();                                       // TODO: flush cache, write to file
     bool new_page(int curr_index);                                    // TODO: allocate new page
     bool free_page();                                   //
-    bool read();
-    bool read(char *buffer, int size, int pageId);
+    bool read(int start, char *buffer, int size, int pageId);
     bool read_for_write();
     bool mark_dirty();
 

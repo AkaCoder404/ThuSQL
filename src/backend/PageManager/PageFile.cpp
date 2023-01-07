@@ -81,10 +81,10 @@ bool PageFileSystem::read(char *buffer, int size, int pageId) {
     return true;
 }
 */
-bool PageFileSystem::read(char *buffer, int size, int count) {
+bool PageFileSystem::read(int start, char *buffer, int size, int count) {
     std::cout << " FileId: " << fileId << "\n";
     int curr_index;
-    lseek(fm->fd[fileId], 0, SEEK_SET);
+    lseek(fm->fd[fileId], start*size, SEEK_SET);
     ::read(fm->fd[fileId], buffer, size*count);
     return true;
 }
