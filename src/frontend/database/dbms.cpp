@@ -36,15 +36,15 @@ void dbms::open_database(const char *database_name) {
 }
 
 void dbms::show_database(const char *database_name) {
-    // database db;
-    // db.open(database_name);
-    // db.show_database_info(true);
+    database db;
+    db.open(database_name);
+    db.show_database_info(true);
 
-    if (!curr_db) {
-        eprint("use database before showing");
-        return;
-    }
-    curr_db->show_database_info(true);
+    // if (!curr_db) {
+    //     eprint("use database before showing");
+    //     return;
+    // }
+    // curr_db->show_database_info(true);
 }
 
 void dbms::drop_database(const char *database_name) {
@@ -243,7 +243,7 @@ void dbms::delete_rows(std::string where, const char *table_name) {
     }
     char *buffer = (char *)malloc(sizeof(char) * (size_of_record * read_rows));
     while (start >= 0) {
-        std::cout << "start: " << start << " records to read " << records_to_read << "\n";
+        // std::cout << "start: " << start << " records to read " << records_to_read << "\n";
         memset((void *)buffer, 0, size_of_record * read_rows);
 
         if (records_to_read == read_rows) tb->select_record(start, buffer, size_of_record, read_rows);
@@ -253,7 +253,7 @@ void dbms::delete_rows(std::string where, const char *table_name) {
         int last_record = records_to_read;
         for (int i = last_record - 1; i >= 0; i--) {
             int rowid; memcpy(&rowid, buffer + i * size_of_record, 4);
-            std::cout << "rowid" << rowid << "\n";
+            // std::cout << "rowid" << rowid << "\n";
 
             // see if row matches
             bool match_row = true;
@@ -283,7 +283,7 @@ void dbms::delete_rows(std::string where, const char *table_name) {
             if (!match_row) continue;
             
             // row matches
-            std::cout << "Row matches, attempting to call delete on rowid: " << rowid << std::endl;
+            // std::cout << "Row matches, attempting to call delete on rowid: " << rowid << std::endl;
             tb->delete_record(th->records_num, rowid, size_of_record);
             th->records_num--;
             th->auto_increment_row_id--;
