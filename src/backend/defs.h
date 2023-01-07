@@ -41,6 +41,13 @@
 #define FIELD_TYPE_VCHAR 2
 
 
+/* read from file */
+#define RECORDS_PER_READ 20
+
+/* display information */
+#define SELECT_LIMIT 10
+
+
 /* data types */
 typedef unsigned int* BufType;      // buffer type 4, unsigned int 4 bytes
 typedef unsigned int uint;          // unsigned int type, 4 bytes

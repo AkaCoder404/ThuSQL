@@ -200,7 +200,7 @@ void dbms::delete_rows(std::string where, const char *table_name) {
     std::cout << "Total Records in this table: " << th->records_num << "\n";
     std::cout << "Size of one record in bytes: " << size_of_record << "\n";
 
-    // WHERE 
+    // WHERE columns
     std::vector<std::pair<int, std::string>> vec = {};
     for (int i = 0; i < th->col_num; i++) {
         std::string str(th->col_name[i]);
@@ -225,35 +225,71 @@ void dbms::delete_rows(std::string where, const char *table_name) {
     }
     return;
 
+    // read backwards
     std::cout << "where" << where << "\n";
     int count_deleted = 0;
-    int read_rows =  ;         // read 10 records at a time
-    int row = 0;
-    char *buffer = (char *)malloc(sizeof(char) * size_of_record * read_rows);
-    while (row < th->records_num) {
+    int read_rows = RECORDS_PER_READ;         // read bytes from [start, start + 20 * size]
+    int start = th->records_num % read_rows == 0 ? th->records_num - read_rows : th->records_num - (th->records_num % read_rows);
+    char *buffer = (char *)malloc(sizeof(char) * (size_of_record * read_rows));
+    while (start != 0) {
         memset((void *)buffer, 0, size_of_record * read_rows);
-        bool match_record = false;
+        if (th->records_num - start < read_rows) {
+            tb->select_record(start, buffer, size_of_record, th->records_num - start);
+        }
+        else tb->select_record(start, buffer, size_of_record, read_rows);
 
 
+        // delete
+        int last_record = th->records_num - start < read_rows ? th->records_num - start : read_rows;
+        for (int i = last_record; i >= 0; i--) {
+            std::vector<variant<std::string, const char *, string_view, tabulate::Table>> row = {};
+            int rowid; memcpy(&rowid, buffer + i * size_of_record, 4);
+            row.push_back(std::to_string(rowid));
 
+            // see if row matches
+            bool match_row = true;
+            for (int j = 0; j < vec.size(); j++) {
+                if (th->col_type[vec[j].first] == FIELD_TYPE_INT) {
+                    int s; memcpy(&s, buffer + i * size_of_record + th->col_offset[vec[j].first], th->col_length[vec[j].first]);
+                    if (stoi(vec[j].second) != s) {
+                        match_row = false;
+                        break;
+                    }
+                } else if (th->col_type[vec[j].first] == FIELD_TYPE_FLOAT) {
+                    float s; memcpy(&s, buffer + i * size_of_record + th->col_offset[vec[j].first], th->col_length[vec[j].first]);
+                    if (stof(vec[j].second) != s) {
+                        match_row = false;
+                        break;
+                    }
+                } else if (th->col_type[vec[j].first] == FIELD_TYPE_VCHAR) {
+                    char s[th->col_length[vec[j].first]];
+                    memcpy(s, buffer + i * size_of_record + th->col_offset[vec[j].first], th->col_length[vec[j].first]);
+                    if (vec[j].second != s) {
+                        match_row = false;
+                        break;
+                    }
+                }
+            }
 
-
-
-
-
-        if (match_record) {
-            // tb->delete_record();
+            if (!match_row) continue;
+            
+            // row matches
+            tb->delete_record(rowid, size_of_record);
+            th->records_num--;
+            th->auto_increment_row_id--;
+            count_deleted++;
         }
         free(buffer);
-        th->records_num--;
-        th->auto_increment_row_id--;
+        start -= read_rows;
     }
-    std::string message = "deleted total rows of";
-    tprint("Done Deleting Rows");
+    std::string message = "deleted total rows of " + std::to_string(count_deleted);
+    dprint(message.c_str());
 }
 
 
+void match_rows() {
 
+}
 
 bool select_row_by_cols(std::string cols, char *col) {
     // if column name matches 
@@ -266,7 +302,6 @@ bool select_row_by_cols(std::string cols, char *col) {
 void dbms::select_rows(std::string cols, std::string where, const char * table_name) {
     tprint("Selecting rows");   
     int total_rows = 5;
-    int show_rows = 10;
     table* tb = curr_db->get_table(table_name);
     table_header *th = tb->get_table_header_p();
   
@@ -274,13 +309,8 @@ void dbms::select_rows(std::string cols, std::string where, const char * table_n
     std::cout << "Total Records in this table " << th->records_num << "\n";
     std::cout << "Size of one record in bytes: " << size << "\n";
 
-    // reasd size * total row bytes
-    total_rows = th->records_num;
-    char *buffer = (char *)malloc(sizeof(char) * (size * total_rows));
-    memset((void *)buffer, 0, size * total_rows);
-    tb->select_record(buffer, size, total_rows);
-
-    int total_cols_selected = 0;
+    // OUTPUT: table header
+    int total_cols_selected = 0;        // SELECT col1, col2 FROM
     tabulate::Table select;
     std::vector<variant<std::string, const char *, string_view, tabulate::Table>> header = {"rowid"};
     for (int i = 0; i < th->col_num; i++) {
@@ -290,7 +320,7 @@ void dbms::select_rows(std::string cols, std::string where, const char * table_n
     }
     select.add_row(header);
 
-    // std::cout << where << "\n";
+    // HANDLE WHERE columns
     // find which column it is, TODO handle errors in where (column might not exists)
     std::vector<std::pair<int, std::string>> vec = {};
     for (int i = 0; i < th->col_num; i++) {
@@ -311,62 +341,91 @@ void dbms::select_rows(std::string cols, std::string where, const char * table_n
         }
     }
 
+    // total rows to read
+    total_rows = th->records_num;
+
+
+    int start = 0;      
+    int rows_per_read = RECORDS_PER_READ;            // read from file [start, size * rows_per_read];
+    int rows_added = 0;
+    while (start < total_rows && rows_added < SELECT_LIMIT) {
+        // if remaining rows less than rows_per_read
+        if (total_rows - start < rows_per_read) rows_per_read = total_rows - start;
+        char *buffer = (char *)malloc(sizeof(char) * (size * rows_per_read));
+        memset((void *)buffer, 0, size * rows_per_read);
+        tb->select_record(start, buffer, size, rows_per_read);
+
+        // populate rows
+        for (int i = 0; i < rows_per_read && rows_added < SELECT_LIMIT; i++) {
+            std::vector<variant<std::string, const char *, string_view, tabulate::Table>> row = {};
+            int rowid; memcpy(&rowid, buffer + i * size, 4);
+            row.push_back(std::to_string(rowid));
+
+            // TODO WHERE
+            bool match_row = true;
+            for (int j = 0; j < vec.size(); j++) {
+                if (th->col_type[vec[j].first] == FIELD_TYPE_INT) {
+                    int s; memcpy(&s, buffer + i * size + th->col_offset[vec[j].first], th->col_length[vec[j].first]);
+                    if (stoi(vec[j].second) != s) {
+                        match_row = false;
+                        break;
+                    }
+                } else if (th->col_type[vec[j].first] == FIELD_TYPE_FLOAT) {
+                    float s; memcpy(&s, buffer + i * size + th->col_offset[vec[j].first], th->col_length[vec[j].first]);
+                    if (stof(vec[j].second) != s) {
+                        match_row = false;
+                        break;
+                    }
+                } else if (th->col_type[vec[j].first] == FIELD_TYPE_VCHAR) {
+                    char s[th->col_length[vec[j].first]];
+                    memcpy(s, buffer + i * size + th->col_offset[vec[j].first], th->col_length[vec[j].first]);
+                    if (vec[j].second != s) {
+                        match_row = false;
+                        break;
+                    }
+                }
+            }
+            if (!match_row) continue;
+
+            // row matches
+            for (int j = 0; j < th->col_num; j++) {
+                if (select_row_by_cols(cols, th->col_name[j])) continue; 
+                
+                if (th->col_type[j] == FIELD_TYPE_INT) {
+                    int s; memcpy(&s, buffer + i * size + th->col_offset[j], th->col_length[j]);
+                    row.push_back(std::to_string(s));
+                } else if (th->col_type[j] == FIELD_TYPE_FLOAT) {
+                    float s; memcpy(&s, buffer + i * size + th->col_offset[j], th->col_length[j]);
+                    row.push_back(std::to_string(s));
+                } else if (th->col_type[j] == FIELD_TYPE_VCHAR) {
+                    char s[th->col_length[j]];
+                    memcpy(s, buffer + i * size + th->col_offset[j], th->col_length[j]);
+                    row.push_back(std::string(s));
+                }
+            }
+            select.add_row(row);
+            rows_added++;
+        }
+
+        // 
+        free(buffer);
+        start += rows_per_read;
+    }
+
+
+
+    // char *buffer = (char *)malloc(sizeof(char) * (size * total_rows));
+    // memset((void *)buffer, 0, size * total_rows);
+    // tb->select_record(buffer, size, total_rows);
+
+   
+
+   
     // for (int i = 0; i < vec.size(); i++) {
     //     std::cout << vec[i].first << vec[i].second << "\n";
     // }
 
-    // populate rows
-    int rows_added = 0;
-    for (int i = 0; i < th->records_num && rows_added < 5; i++) {
-        std::vector<variant<std::string, const char *, string_view, tabulate::Table>> row = {};
-        int rowid; memcpy(&rowid, buffer + i * size, 4);
-        row.push_back(std::to_string(rowid));
 
-        // TODO WHERE
-        bool match_row = true;
-        for (int j = 0; j < vec.size(); j++) {
-            if (th->col_type[vec[j].first] == FIELD_TYPE_INT) {
-                int s; memcpy(&s, buffer + i * size + th->col_offset[vec[j].first], th->col_length[vec[j].first]);
-                if (stoi(vec[j].second) != s) {
-                    match_row = false;
-                    break;
-                }
-            } else if (th->col_type[vec[j].first] == FIELD_TYPE_FLOAT) {
-                float s; memcpy(&s, buffer + i * size + th->col_offset[vec[j].first], th->col_length[vec[j].first]);
-                if (stof(vec[j].second) != s) {
-                    match_row = false;
-                    break;
-                }
-            } else if (th->col_type[vec[j].first] == FIELD_TYPE_VCHAR) {
-                char s[th->col_length[vec[j].first]];
-                memcpy(s, buffer + i * size + th->col_offset[vec[j].first], th->col_length[vec[j].first]);
-                if (vec[j].second != s) {
-                    match_row = false;
-                    break;
-                }
-            }
-        }
-        if (!match_row) continue;
-
-        // row matches
-        for (int j = 0; j < th->col_num; j++) {
-            if (select_row_by_cols(cols, th->col_name[j])) continue; 
-            
-            if (th->col_type[j] == FIELD_TYPE_INT) {
-                int s; memcpy(&s, buffer + i * size + th->col_offset[j], th->col_length[j]);
-                row.push_back(std::to_string(s));
-            } else if (th->col_type[j] == FIELD_TYPE_FLOAT) {
-                float s; memcpy(&s, buffer + i * size + th->col_offset[j], th->col_length[j]);
-                row.push_back(std::to_string(s));
-            } else if (th->col_type[j] == FIELD_TYPE_VCHAR) {
-                char s[th->col_length[j]];
-                memcpy(s, buffer + i * size + th->col_offset[j], th->col_length[j]);
-                row.push_back(std::string(s));
-            }
-        }
-        select.add_row(row);
-        rows_added++;
-    }
 
     // style header
     for (size_t i = 0; i < total_cols_selected + 1; ++i) {
@@ -376,7 +435,7 @@ void dbms::select_rows(std::string cols, std::string where, const char * table_n
         .font_style({tabulate::FontStyle::bold});
     }
     std::cout << select << "\n";
-    free(buffer);
+    // free(buffer);
 }
 
 void dbms::update_rows() {}
