@@ -220,31 +220,39 @@ void dbms::delete_rows(std::string where, const char *table_name) {
         }
     }
 
-    for (int i = 0; i < vec.size(); i++) {
-        std::cout << vec[i].first << vec[i].second << "\n";
-    }
-    return;
-
+    // for (int i = 0; i < vec.size(); i++) {
+    //     std::cout << vec[i].first << vec[i].second << "\n";
+    // }
     // read backwards
-    std::cout << "where" << where << "\n";
     int count_deleted = 0;
     int read_rows = RECORDS_PER_READ;         // read bytes from [start, start + 20 * size]
-    int start = th->records_num % read_rows == 0 ? th->records_num - read_rows : th->records_num - (th->records_num % read_rows);
-    char *buffer = (char *)malloc(sizeof(char) * (size_of_record * read_rows));
-    while (start != 0) {
-        memset((void *)buffer, 0, size_of_record * read_rows);
-        if (th->records_num - start < read_rows) {
-            tb->select_record(start, buffer, size_of_record, th->records_num - start);
-        }
-        else tb->select_record(start, buffer, size_of_record, read_rows);
 
+    int start, records_to_read;
+    if (th->records_num < read_rows) {
+        start = 0;
+        records_to_read = th->records_num;
+    }
+    else if (th->records_num % read_rows == 0) {
+        start = th->records_num - read_rows;
+        records_to_read = read_rows;
+    }
+    else {
+        start = th->records_num - (th->records_num % read_rows);
+        records_to_read = (th->records_num % read_rows);
+    }
+    char *buffer = (char *)malloc(sizeof(char) * (size_of_record * read_rows));
+    while (start >= 0) {
+        std::cout << "start: " << start << "\n";
+        memset((void *)buffer, 0, size_of_record * read_rows);
+
+        if (records_to_read == read_rows) tb->select_record(start, buffer, size_of_record, read_rows);
+        else tb->select_record(start, buffer, size_of_record, records_to_read);
 
         // delete
-        int last_record = th->records_num - start < read_rows ? th->records_num - start : read_rows;
+        int last_record = records_to_read;
         for (int i = last_record; i >= 0; i--) {
-            std::vector<variant<std::string, const char *, string_view, tabulate::Table>> row = {};
             int rowid; memcpy(&rowid, buffer + i * size_of_record, 4);
-            row.push_back(std::to_string(rowid));
+            std::cout << "rowid" << rowid << "\n";
 
             // see if row matches
             bool match_row = true;
