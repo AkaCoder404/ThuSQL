@@ -313,13 +313,9 @@ public:
 
 
 // table
-void handle_primary_key_composite(table_header *header) {
+void handle_primary_key_composite(table_header *header) {}
 
-}
-
-void handle_foreign_key() {
-
-}
+void handle_foreign_key() { }
 
 bool parse_table_header(table_header *header,SQLParser::Create_tableContext *ctx) {
   // std::cout << ctx->getText();

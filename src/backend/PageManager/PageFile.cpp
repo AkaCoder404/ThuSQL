@@ -82,17 +82,17 @@ bool PageFileSystem::read(char *buffer, int size, int pageId) {
 }
 */
 bool PageFileSystem::read(int start, char *buffer, int size, int count) {
-    std::cout << " FileId: " << fileId << "\n";
+    // std::cout << " FileId: " << fileId << "\n";
     int curr_index;
     lseek(fm->fd[fileId], start*size, SEEK_SET);
     ::read(fm->fd[fileId], buffer, size*count);
     return true;
 }
 
-bool PageFileSystem::row_delete(int rowId, int size) {
+bool PageFileSystem::row_delete(int total_row, int rowId, int size) {
     std::cout << "row_delete called, physically deleting row id of: " << rowId-1 << std::endl;
     char* endingRow = new char[56];
-    lseek(fm->fd[fileId], -(size-4), SEEK_END);
+    lseek(fm->fd[fileId], (size*total_row)-(size-4), SEEK_SET);
     ::read(fm->fd[fileId], endingRow, size-4);
     lseek(fm->fd[fileId], ((rowId-1)*size)+4, SEEK_SET);
     ::write(fm->fd[fileId], endingRow, size-4);

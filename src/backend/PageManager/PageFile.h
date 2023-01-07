@@ -42,7 +42,7 @@ public:
     bool read(int start, char *buffer, int size, int pageId);
     bool read_for_write();
     bool mark_dirty();
-    bool row_delete(int rowId, int size);
+    bool row_delete(int total_row, int rowId, int size);
     bool row_update(int rowId, int size);
 
     // 
