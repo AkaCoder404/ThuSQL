@@ -89,7 +89,15 @@ bool PageFileSystem::read(int start, char *buffer, int size, int count) {
     return true;
 }
 
-
+bool PageFileSystem::row_delete(int rowId, int size) {
+    std::cout << " Deleting row id of: " << rowId << std::endl;
+    char* endingRow;
+    lseek(fm->fd[fileId], -size+4, SEEK_END);
+    ::read(fm->fd[fileId], endingRow, size-4);
+    lseek(fm->fd[fileId], (rowId-1)*size+4, SEEK_SET);
+    ::write(fm->fd[fileId], endingRow, size-4);
+    return true;
+}
 
 bool PageFileSystem::mark_dirty() {
     return true;

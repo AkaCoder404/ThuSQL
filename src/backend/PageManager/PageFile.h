@@ -42,6 +42,7 @@ public:
     bool read(int start, char *buffer, int size, int pageId);
     bool read_for_write();
     bool mark_dirty();
+    bool row_delete(int rowId, int size);
 
     // 
     PageHeader page_headers[MAX_FILE_NUM];  // contains details about each page
