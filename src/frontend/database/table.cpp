@@ -70,3 +70,7 @@ void table::delete_record(int total_row, int row_id, int size) {
     pg->row_delete(total_row, row_id, size);
 }
 
+
+void table::update_record(int start, char *buffer, int row_id, int size, int count) {
+    pg->row_update(row_id, size);
+}

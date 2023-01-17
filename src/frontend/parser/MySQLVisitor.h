@@ -146,6 +146,44 @@ public:
 
   std::any visitUpdate_table(SQLParser::Update_tableContext *ctx) override {
     vprint("visit update table");
+    tprint("working on");
+    // table identifier
+    std::string table_name = ctx->Identifier()->getText();
+    // handle set clause
+
+    SQLParser::Set_clauseContext *set_clause = ctx->set_clause();
+    std::vector<struct SetContext> set;
+    int count = 0;
+    for (auto e: set_clause->value()) {
+      struct SetContext temp;
+      temp.column = set_clause->Identifier().at(count)->getText();
+      temp.value = e->getText();
+      std::cout <<  set_clause->Identifier().at(count)->getText() << " ";
+      std::cout << e->getText() << "\n";  
+
+      set.push_back(temp);
+      count++;
+    }
+
+    // handle where clause
+    std::vector<struct WhereContext> where_clause_context;
+    if (ctx->where_and_clause()) { 
+      std::vector<SQLParser::Where_clauseContext *, 
+                  std::allocator<SQLParser::Where_clauseContext *>> 
+                  where_and_clause = ctx->where_and_clause()->where_clause();
+                  
+
+      for (auto e : where_and_clause) {
+        struct WhereContext temp;  
+        temp.column = e->children.at(0)->getText();
+        temp.op =  e->children.at(1)->getText();
+        temp.value = e->children.at(2)->getText();
+        where_clause_context.push_back(temp);
+      }
+    }
+
+    tprint("working on");
+    dbms::get_instance()->update_rows(table_name.c_str(), where_clause_context, set);
     return this->visitChildren(ctx);
   }
 
@@ -169,7 +207,6 @@ public:
     
     // get selectors and put into vector of strings
     SQLParser::SelectorsContext *selectors_context = ctx->selectors();
-    // SQLParser::SelectorContext *selector_context = ctx->selectors()->selector();
     std::vector<std::string> selectors;
     for (auto e : selectors_context->selector()) {
       selectors.push_back(e->getText());
@@ -177,7 +214,6 @@ public:
 
 
     // handle where clause, TODO: support AND, OR, NOT clause relationship
-    // std::cout << "where: " << ctx->where_and_clause() << "\n";
     // vector<column, operator, expression>
     std::vector<struct WhereContext> where_clause_context;
     if (ctx->where_and_clause()) { 
@@ -194,19 +230,6 @@ public:
         where_clause_context.push_back(temp);
       }
     }
-
-    // print stuff
-    // std::cout << "selectors: ";
-    // for (int i = 0; i < selectors.size(); i++) {
-    //   std::cout << selectors[i] << " | ";
-    // }
-    // std::cout << "\n";
-    // std::cout << "where: ";
-    // for (int i = 0; i < where_clause_context.size(); i++) {
-    //   std::cout << "<" << where_clause_context[i].column << "," <<
-    //                       where_clause_context[i].op     << "," <<
-    //                       where_clause_context[i].value  << ">, ";
-    // }
 
     dbms::get_instance()->select_rows(selectors, where_clause_context, table_name->getText().c_str());
     return this->visitChildren(ctx);
@@ -340,6 +363,7 @@ public:
 
   std::any visitSet_clause(SQLParser::Set_clauseContext *ctx) override {
     vprint("visit set clause");
+    std::cout << ctx->getText() << "\n";
     return this->visitChildren(ctx);
   }
 

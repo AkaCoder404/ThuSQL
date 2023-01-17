@@ -39,6 +39,8 @@ SELECT * FROM Persons WHERE Grade <= 50.0 AND FirstName = 'Big';
 
 DELETE FROM Persons WHERE Grade <= 50;
 
+UPDATE Persons SET FirstName = 'Smart', LastName = 'Student' WHERE Grade >= 90.0;
+
 SELECT * FROM Persons;
 
 

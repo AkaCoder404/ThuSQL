@@ -14,6 +14,11 @@ struct WhereContext {
     std::string value;
 };
 
+struct SetContext {
+    std::string column;
+    std::string value;
+};
+
 
 class dbms {
 private:
@@ -49,7 +54,7 @@ public:
     void insert_rows(SQLParser::Insert_into_tableContext *ctx);
     void delete_rows(const char *table_name, std::vector<struct WhereContext> &where);
     void select_rows(std::vector<std::string> selectors, std::vector<struct WhereContext>& where, const char *table_name);
-    void update_rows();
+    void update_rows(const char *table_name, std::vector<struct WhereContext>& where, std::vector<struct SetContext>& set);
 
     static dbms* get_instance() {
         static dbms ms;

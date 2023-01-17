@@ -414,4 +414,84 @@ void dbms::select_rows(std::vector<std::string> selectors, std::vector<struct Wh
     dprint(selected_message.c_str());
 }
 
-void dbms::update_rows() {}
+void dbms::update_rows(const char* table_name, std::vector<struct WhereContext>& where, std::vector<struct SetContext>& set) {
+    // get table info
+    table *tb = curr_db->get_table(table_name);
+    table_header *th = tb->get_table_header_p();
+
+    int total_cols = th->col_num - 1;
+    int record_size = th->col_offset[total_cols] + th->col_length[total_cols];
+
+    std::cout << "Total Records in this table " << th->records_num << "\n";
+    std::cout << "Size of one record in bytes: " << record_size <<  "\n";
+
+    // match where the column in table
+    std::vector<int> where_col_in_table;
+    for (int i = 0; i < where.size(); i++) {
+        for (int j = 0; j < th->col_num; j++ ) {
+            if (th->col_name[j] == where[i].column) where_col_in_table.push_back(j);
+        }
+    }
+
+    // match set the column in table
+    std::vector<int> set_col_in_table;
+    for (int i = 0; i < where.size(); i++) {
+        for (int j = 0; j < th->col_num; j++ ) {
+            if (th->col_name[j] == set[i].column) set_col_in_table.push_back(j);
+        }
+    }
+
+
+
+
+    // start reading
+    int start_read = 0;
+    int records_per_read = RECORDS_PER_READ;
+    int rows_updated = 0;
+    int total_records = th->records_num;
+
+    while (start_read < total_records) {
+        // if remaining records is less than the number of records_per_read
+        int remaining_records = total_records - start_read;
+        if (remaining_records < records_per_read) records_per_read = remaining_records;
+
+        // allocate and read from mem
+        char *buffer = (char *)malloc(sizeof(char) * (record_size * records_per_read));
+        memset((void *)buffer, 0, record_size * records_per_read);
+        tb->select_record(start_read, buffer, record_size, records_per_read);
+
+        // scan through all records
+         for (int i = 0; i < records_per_read; i++) {  
+            int rowid; memcpy(&rowid, buffer + i * record_size, 4);
+
+            // check row matches where context
+            bool match_row = check_where(th, record_size, i, buffer, where_col_in_table, where);
+            if (!match_row) continue;
+
+            // row matches, update buffer based on select
+            for (int j = 0; j < th->col_num; j++) {
+                std::string col_name = std::string(th->col_name[j]);
+                auto it = std::find_if(set.begin(), set.end(), [&col_name](const SetContext& obj) {return obj.column == col_name;});
+                if (it == set.end()) continue;
+                
+            
+                if (th->col_type[j] == FIELD_TYPE_INT) {
+                    int s = std::stoi((*it).value);
+                    memcpy(buffer + i * record_size + th->col_offset[j], &s,th->col_length[j]);
+                } else if (th->col_type[j] == FIELD_TYPE_FLOAT) {
+                    float s = std::stof((*it).value);
+                    memcpy(buffer + i * record_size + th->col_offset[j], &s,th->col_length[j]);
+                } else if (th->col_type[j] == FIELD_TYPE_VCHAR) {
+                    memcpy(buffer + i * record_size + th->col_offset[j], &(*it).value, th->col_length[j]);
+                }
+            }
+            // write back to memory
+            tb->update_record(start_read, buffer, i, record_size, records_per_read);
+            rows_updated++;
+        }
+        free(buffer);
+        start_read += records_per_read;
+        std::string selected_message = "updated " + std::to_string(rows_updated) + " record(s) out of " + std::to_string(total_records) + " records";
+        dprint(selected_message.c_str());
+    }
+}
