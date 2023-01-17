@@ -1,0 +1,32 @@
+CREATE DATABASE db;
+SHOW DATABASE db;
+
+USE db;
+CREATE TABLE Persons ( 
+	ID INT NOT NULL, 
+	Age INT DEFAULT 1, 
+	Height INT DEFAULT NULL, 
+	Grade FLOAT DEFAULT 100.00,  
+	LastName VARCHAR(20) DEFAULT 'lastname', 
+	FirstName VARCHAR(20) DEFAULT 'firstname',
+	PRIMARY KEY (ID)
+);
+
+INSERT INTO Persons VALUES (420, 69, 12, 1.0, 'It', 'Blaze');
+INSERT INTO Persons VALUES (420, 69, 12, 1.0, 'It', 'Blaze');
+INSERT INTO Persons VALUES (420, 69, 12, 1.0, 'It', 'Blaze');
+INSERT INTO Persons VALUES (420, 69, 12, 1.0, 'It', 'Blaze');
+INSERT INTO Persons VALUES (420, 69, 12, 1.0, 'It', 'Blaze');
+INSERT INTO Persons VALUES (420, 69, 12, 1.0, 'It', 'Blaze');
+INSERT INTO Persons VALUES (420, 69, 12, 1.0, 'It', 'Blaze');
+INSERT INTO Persons VALUES (420, 69, 12, 1.0, 'It', 'Blaze');
+INSERT INTO Persons VALUES (420, 69, 12, 1.0, 'It', 'Blaze');
+INSERT INTO Persons VALUES (420, 69, 12, 1.0, 'It', 'Blaze');
+INSERT INTO Persons VALUES (420, 69, 12, 1.0, 'It', 'Blaze');
+INSERT INTO Persons VALUES (420, 69, 12, 1.0, 'It', 'Nihaoma');
+
+SELECT * FROM Persons;
+
+UPDATE Persons SET FirstName = 'Smart', LastName = 'Student' WHERE FirstName = 'Nihaoma';
+
+SELECT * FROM Persons;
