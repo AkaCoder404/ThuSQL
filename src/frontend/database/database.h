@@ -18,16 +18,18 @@ private:
 public:
     database();
     ~database();
+
     /* database */
     void create(const char *name);          // create database
     bool open(const char *name);            // open database
     void drop();                            // delete database
     void close();                           // close (current) database
-    void show_database_info(bool show_tables);
+    void show_database_info(bool show_tables, bool show_header);
 
     /* table */ 
     void create_table(table_header *header);
     void show_table(const char *name);
+    void show_tables();
     void drop_table(const char *name);
     table* get_table(const char *name);
     table* get_table(int id);

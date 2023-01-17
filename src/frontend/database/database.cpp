@@ -49,7 +49,6 @@ bool database::open(const char* name) {
 }
 
 void database::close() {
-    tprint("closing db");
     assert(is_opened);
     // close all tables
     for(table *tb : tables) {
@@ -66,7 +65,6 @@ void database::close() {
     fwrite(&info, sizeof(info), 1, fp);
     fclose(fp);
     is_opened = false;
-
 }
 
 void database::drop() {
@@ -84,7 +82,9 @@ void database::drop() {
     is_opened = false;
 }
 
-void database::show_database_info(bool show_tables) {
+void database::show_database_info(bool show_tables, bool show_header) {
+    assert(is_opened);
+    // construct header
     tabulate::Table database_info;
     const char* title = "Database Info"; 
     database_info.add_row({title});
@@ -122,7 +122,7 @@ void database::show_database_info(bool show_tables) {
     db_info.add_row({"Number of Tables", std::to_string(info.table_num)});
     db_info[0].format().width(30);
     db_info[1].format().width(10);
-    std::cout << db_info << std::endl;
+    if (show_header) std::cout << db_info << std::endl;
 
     // print all tables
     if (!show_tables) return;
@@ -155,11 +155,10 @@ void database::show_table(const char*name) {
     if (id == -1) {
         eprint("Table does not exist");
     } else { 
-        tprint("Found table");
 
+        // create table header
         tabulate::Table table_info;
         std::string name = tables[id]->get_table_name();
-
 
         table_info.add_row({name});
         table_info.format()
@@ -189,7 +188,8 @@ void database::show_table(const char*name) {
             .border_bottom_color(tabulate::Color::red);
         table_info[0].format().width(61);
         std::cout << table_info << "\n";
-
+        
+        // create table body
         tabulate::Table thead;
         thead.add_row({"NAME", "FIELD TYPE", "LENGTH", "NOT NULL", "DEFAULT", "OFFSET"});
         std::string arr[3] = {"INT", "FLOAT", "VARCHAR"};
@@ -214,7 +214,7 @@ void database::show_table(const char*name) {
         std::cout << "Record Num "  << header.records_num << "\n"; 
 
         // center-align and color header cells
-	    for (size_t i = 0; i < 5; ++i) {
+	    for (size_t i = 0; i < 6; ++i) {
             thead[0][i].format()
             .font_color(tabulate::Color::yellow)
             .font_align(tabulate::FontAlign::center)
@@ -223,6 +223,14 @@ void database::show_table(const char*name) {
         std::cout << thead << "\n";
     }
 }
+
+void database::show_tables() {
+    assert(is_opened);
+    for (int i = 0; i < info.table_num; i++) {
+        show_table(info.table_names[i]);
+    }
+}
+
 
 table* database::get_table(const char* name) {
     assert(is_opened);

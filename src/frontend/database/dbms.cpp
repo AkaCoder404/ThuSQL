@@ -38,7 +38,7 @@ void dbms::open_database(const char *database_name) {
 void dbms::show_database(const char *database_name) {
     database db;
     db.open(database_name);
-    db.show_database_info(true);
+    db.show_database_info(true, true);
 
     // if (!curr_db) {
     //     eprint("use database before showing");
@@ -79,6 +79,12 @@ void dbms::show_databases() {
 
 void dbms::create_table(table_header *header) {
     curr_db->create_table(header);
+}
+
+void dbms::show_tables() {
+    tprint("show_tables");
+    curr_db->show_database_info(true, false);
+    curr_db->show_tables();
 }
 
 void dbms::show_table(const char *table_name) {
@@ -192,258 +198,211 @@ void dbms::insert_rows(SQLParser::Insert_into_tableContext *ctx) {
     // std::cout << "Successfully inserted " << success << " out of " << total << "\n";
 }
 
-void dbms::delete_rows(std::string where, const char *table_name) {
-    tprint("deleting rows");
-    table* tb = curr_db->get_table(table_name);
+bool check_where_op (std::string op, float value2, float value1) {
+    // =, !=, >, >=, <, <=
+    // std::cout << "checking where op: " << value1 << " " << op << " " << value2 << "\n";
+    if (op == "=") {
+        return value1 == value2;
+    } else if (op == "!=") {
+        return value1 != value2;
+    } else if (op == ">") {
+        return value1 > value2;
+    } else if (op == "<") {
+        return value1 < value2;
+    } else if (op == ">=") {
+        return value1 >= value2;
+    } else if (op == "<=") {
+        return value1 <= value2;
+    }
+    return true;
+}
+
+bool check_where(table_header* th, int record_size, int record_num, char* buffer, 
+                std::vector<int> where_col_in_table, 
+                std::vector<struct WhereContext>& where) {
+    
+    if (where.size() == 0) return true;
+
+    bool check_is_true = true;
+    for (int i = 0; i < where_col_in_table.size(); i++) {
+        int col = where_col_in_table[i];
+        if (th->col_type[col] == FIELD_TYPE_INT) {
+            int s; memcpy(&s, buffer + record_num * record_size + th->col_offset[col], th->col_length[col]);
+            check_is_true = check_where_op(where[i].op, stof(where[i].value), float(s));
+
+        } else if (th->col_type[col] == FIELD_TYPE_FLOAT) {
+            float s; memcpy(&s, buffer + record_num * record_size + th->col_offset[col], th->col_length[col]);
+            check_is_true = check_where_op(where[i].op, stof(where[i].value), s);
+
+        } else if (th->col_type[col] == FIELD_TYPE_VCHAR) {
+            char s[th->col_length[col]];
+            memcpy(s, buffer + record_num * record_size + th->col_offset[col], th->col_length[col]);
+            check_is_true =where[i].value == s;
+        }
+        if (!check_is_true) return false;
+    }
+
+
+    return true;
+}
+
+
+void dbms::delete_rows(const char* table_name, std::vector<struct WhereContext>& where) {
+    // table information
+    table *tb = curr_db->get_table(table_name);
     table_header *th = tb->get_table_header_p();
-
-    int size_of_record = th->col_offset[th->col_num - 1] + th->col_length[th->col_num - 1];
+    int total_cols = th->col_num - 1;
+    int record_size = th->col_offset[total_cols] + th->col_length[total_cols];
     std::cout << "Total Records in this table: " << th->records_num << "\n";
-    std::cout << "Size of one record in bytes: " << size_of_record << "\n";
+    std::cout << "Size of one record in bytes: " << record_size  << "\n";
 
-    // WHERE columns
-    std::vector<std::pair<int, std::string>> vec = {};
-    for (int i = 0; i < th->col_num; i++) {
-        std::string str(th->col_name[i]);
-        if (where.find("D" + str + "=") != std::string::npos) { //ANDcolname=5
-            int start = where.find(str) + strlen(th->col_name[i]) + 1;
-            std::string remaining = where.substr(start, where.length() - start);
-            int length = remaining.find("AND") == std::string::npos ? remaining.length() : remaining.find("AND");
-            // std::cout << "found " << th->col_name[i] << "\n";
-            vec.push_back(std::make_pair(i, where.substr(start, length)));
-            continue;
-        }
-        if (where.find(str + "=") == 0) {                       // first entry
-            // std::cout << "found " << th->col_name[i] << "\n";
-            int start = strlen(th->col_name[i]) + 1;
-            int length = where.find("AND") == std::string::npos ? where.length() - start : where.find("AND") - start;
-            vec.push_back(std::make_pair(i, where.substr(start, length)));
+    // location of where column in table 
+    std::vector<int> where_col_in_table;
+    for (int i = 0; i < where.size(); i++) {
+        for (int j = 0; j < th->col_num; j++ ) {
+            if (th->col_name[j] == where[i].column) where_col_in_table.push_back(j);
         }
     }
 
-    // for (int i = 0; i < vec.size(); i++) {
-    //     std::cout << vec[i].first << vec[i].second << "\n";
-    // }
-    // read backwards
-    int count_deleted = 0;
-    int read_rows = RECORDS_PER_READ;         // read bytes from [start, start + 20 * size]
+    // read from mem, start reading from end 
+    int records_deleted = 0;
+    int records_per_read = RECORDS_PER_READ;
 
-    int start, records_to_read;
-    if (th->records_num < read_rows) {
-        start = 0;
+    int start_read, records_to_read;
+
+    if (th->records_num < records_per_read) {
+        start_read = 0;
         records_to_read = th->records_num;
+    } else if (th->records_num % records_per_read == 0) {
+        start_read = th->records_num - records_per_read;
+        records_to_read = (th->records_num % records_per_read);
+    } else {
+        start_read = th->records_num - (th->records_num % records_per_read);
+        records_to_read = (th->records_num % records_per_read);
     }
-    else if (th->records_num % read_rows == 0) {
-        start = th->records_num - read_rows;
-        records_to_read = read_rows;
-    }
-    else {
-        start = th->records_num - (th->records_num % read_rows);
-        records_to_read = (th->records_num % read_rows);
-    }
-    char *buffer = (char *)malloc(sizeof(char) * (size_of_record * read_rows));
-    while (start >= 0) {
-        // std::cout << "start: " << start << " records to read " << records_to_read << "\n";
-        memset((void *)buffer, 0, size_of_record * read_rows);
 
-        if (records_to_read == read_rows) tb->select_record(start, buffer, size_of_record, read_rows);
-        else tb->select_record(start, buffer, size_of_record, records_to_read);
+    // start reading from memory to buffer, then check buffer if meets where clause
+    char *buffer = (char *)malloc(sizeof(char) * (record_size * records_per_read));
+    while (start_read >= 0) {
+        memset((void *)buffer, 0, (record_size * records_per_read));
 
-        // delete
+        // 
+        if (records_to_read == records_per_read) 
+            tb->select_record(start_read, buffer, record_size, records_to_read);
+        else tb->select_record(start_read, buffer, record_size, records_to_read);
+
+        //
         int last_record = records_to_read;
         for (int i = last_record - 1; i >= 0; i--) {
-            int rowid; memcpy(&rowid, buffer + i * size_of_record, 4);
-            // std::cout << "rowid" << rowid << "\n";
+            int rowid; memcpy(&rowid, buffer + i * record_size, 4);
 
-            // see if row matches
-            bool match_row = true;
-            for (int j = 0; j < vec.size(); j++) {
-                if (th->col_type[vec[j].first] == FIELD_TYPE_INT) {
-                    int s; memcpy(&s, buffer + i * size_of_record + th->col_offset[vec[j].first], th->col_length[vec[j].first]);
-                    if (stoi(vec[j].second) != s) {
-                        match_row = false;
-                        break;
-                    }
-                } else if (th->col_type[vec[j].first] == FIELD_TYPE_FLOAT) {
-                    float s; memcpy(&s, buffer + i * size_of_record + th->col_offset[vec[j].first], th->col_length[vec[j].first]);
-                    if (stof(vec[j].second) != s) {
-                        match_row = false;
-                        break;
-                    }
-                } else if (th->col_type[vec[j].first] == FIELD_TYPE_VCHAR) {
-                    char s[th->col_length[vec[j].first]];
-                    memcpy(s, buffer + i * size_of_record + th->col_offset[vec[j].first], th->col_length[vec[j].first]);
-                    if (vec[j].second != s) {
-                        match_row = false;
-                        break;
-                    }
-                }
-            }
-
+            bool match_row = check_where(th, record_size, i, buffer, where_col_in_table, where);
             if (!match_row) continue;
-            
-            // row matches
-            // std::cout << "Row matches, attempting to call delete on rowid: " << rowid << std::endl;
-            tb->delete_record(th->records_num, rowid, size_of_record);
+
+            tb->delete_record(th->records_num, rowid, record_size);
             th->records_num--;
             th->auto_increment_row_id--;
-            count_deleted++;
+            records_deleted++;
         }
 
-        // if (records_to_read != read_rows) {
 
-        // }
-
-        if (records_to_read != read_rows) {
-            records_to_read = read_rows;
+        // update for next set
+        if (records_to_read != records_per_read) {
+            records_to_read = records_per_read;
         }
-
-        start -= read_rows;
-        // std::cout << "start: " << start << " records to read " << records_to_read << "\n";
+        start_read -= records_per_read;
     }
-    std::string message = "deleted total rows of " + std::to_string(count_deleted);
+
     free(buffer);
+    std::string message = "deleted " + std::to_string(records_deleted) + " record(s)";
     dprint(message.c_str());
 }
 
-void match_rows() {}
-
-bool select_row_by_cols(std::string cols, char *col) {
-    // if column name matches 
-    std::string match = "\"" + std::string(col) + "\"";
-    if (cols.find(match) == std::string::npos && cols != "\"*\"") return true;
-    return false;  
-}
-
-void dbms::select_rows(std::string cols, std::string where, const char * table_name) {
-    tprint("Selecting rows");   
-    int total_rows = 5;
-    table* tb = curr_db->get_table(table_name);
+void dbms::select_rows(std::vector<std::string> selectors, std::vector<struct WhereContext>& where, const char* table_name) {
+    // get table info
+    table *tb = curr_db->get_table(table_name);
     table_header *th = tb->get_table_header_p();
-  
-    int size = th->col_offset[th->col_num - 1] + th->col_length[th->col_num - 1];
-    std::cout << "Total Records in this table " << th->records_num << "\n";
-    std::cout << "Size of one record in bytes: " << size << "\n";
 
-    // OUTPUT: table header
-    int total_cols_selected = 0;        // SELECT col1, col2 FROM
+    int total_cols = th->col_num - 1;
+    int record_size = th->col_offset[total_cols] + th->col_length[total_cols];
+
+    std::cout << "Total Records in this table " << th->records_num << "\n";
+    std::cout << "Size of one record in bytes: " << record_size <<  "\n";
+
+     // match where the column is in table
+    std::vector<int> where_col_in_table;
+    for (int i = 0; i < where.size(); i++) {
+        for (int j = 0; j < th->col_num; j++ ) {
+            if (th->col_name[j] == where[i].column) where_col_in_table.push_back(j);
+        }
+    }
+
+   
+    // output table header  
+    int total_cols_selected = 0;
     tabulate::Table select;
     std::vector<variant<std::string, const char *, string_view, tabulate::Table>> header = {"rowid"};
     for (int i = 0; i < th->col_num; i++) {
-        if (select_row_by_cols(cols, th->col_name[i])) continue;
+        if (selectors.size() && std::find(selectors.begin(), selectors.end(), std::string(th->col_name[i])) == selectors.end()) continue;
         header.push_back(th->col_name[i]);
         total_cols_selected++;
     }
     select.add_row(header);
 
-    // HANDLE WHERE columns
-    // find which column it is, TODO handle errors in where (column might not exists)
-    std::vector<std::pair<int, std::string>> vec = {};
-    for (int i = 0; i < th->col_num; i++) {
-        std::string str(th->col_name[i]);
-        if (where.find("D" + str + "=") != std::string::npos) { //ANDcolname=5
-            int start = where.find(str) + strlen(th->col_name[i]) + 1;
-            std::string remaining = where.substr(start, where.length() - start);
-            int length = remaining.find("AND") == std::string::npos ? remaining.length() : remaining.find("AND");
-            // std::cout << "found " << th->col_name[i] << "\n";
-            vec.push_back(std::make_pair(i, where.substr(start, length)));
-            continue;
-        }
-        if (where.find(str + "=") == 0) {                       // first entry
-            // std::cout << "found " << th->col_name[i] << "\n";
-            int start = strlen(th->col_name[i]) + 1;
-            int length = where.find("AND") == std::string::npos ? where.length() - start : where.find("AND") - start;
-            vec.push_back(std::make_pair(i, where.substr(start, length)));
-        }
-    }
 
-    // total rows to read
-    total_rows = th->records_num;
+    // start reading
+    int total_records = th->records_num;
+    int start_read = 0;                     // [start, start + records_per_read]
+    int rows_per_read = RECORDS_PER_READ;
+    int rows_selected = 0;
 
 
-    int start = 0;      
-    int rows_per_read = RECORDS_PER_READ;            // read from file [start, size * rows_per_read];
-    int rows_added = 0;
-    while (start < total_rows && rows_added < SELECT_LIMIT) {
-        // if remaining rows less than rows_per_read
-        if (total_rows - start < rows_per_read) rows_per_read = total_rows - start;
-        char *buffer = (char *)malloc(sizeof(char) * (size * rows_per_read));
-        memset((void *)buffer, 0, size * rows_per_read);
-        tb->select_record(start, buffer, size, rows_per_read);
+    while (start_read < total_records && rows_selected < SELECT_LIMIT) {
+        // if remaining records is less than the number of records_per_read;
+        int remaining_records = total_records - start_read;
+        if (remaining_records < rows_per_read) rows_per_read = remaining_records;
+
+        // allocate and read from mem
+        char *buffer = (char *)malloc(sizeof(char) * (record_size * rows_per_read));
+        memset((void *)buffer, 0, record_size * rows_per_read);
+        tb->select_record(start_read, buffer, record_size, rows_per_read);
+
 
         // populate rows
-        for (int i = 0; i < rows_per_read && rows_added < SELECT_LIMIT; i++) {
+        for (int i = 0; i < rows_per_read && rows_selected < SELECT_LIMIT; i++) {
             std::vector<variant<std::string, const char *, string_view, tabulate::Table>> row = {};
-            int rowid; memcpy(&rowid, buffer + i * size, 4);
+            int rowid; memcpy(&rowid, buffer + i * record_size, 4);
             row.push_back(std::to_string(rowid));
 
-            // TODO WHERE
-            bool match_row = true;
-            for (int j = 0; j < vec.size(); j++) {
-                if (th->col_type[vec[j].first] == FIELD_TYPE_INT) {
-                    int s; memcpy(&s, buffer + i * size + th->col_offset[vec[j].first], th->col_length[vec[j].first]);
-                    if (stoi(vec[j].second) != s) {
-                        match_row = false;
-                        break;
-                    }
-                } else if (th->col_type[vec[j].first] == FIELD_TYPE_FLOAT) {
-                    float s; memcpy(&s, buffer + i * size + th->col_offset[vec[j].first], th->col_length[vec[j].first]);
-                    if (stof(vec[j].second) != s) {
-                        match_row = false;
-                        break;
-                    }
-                } else if (th->col_type[vec[j].first] == FIELD_TYPE_VCHAR) {
-                    char s[th->col_length[vec[j].first]];
-                    memcpy(s, buffer + i * size + th->col_offset[vec[j].first], th->col_length[vec[j].first]);
-                    if (vec[j].second != s) {
-                        match_row = false;
-                        break;
-                    }
-                }
-            }
+            // check row matches where context
+            bool match_row = check_where(th, record_size, i, buffer, where_col_in_table, where);
             if (!match_row) continue;
 
-            // row matches
+            // row matches, add columns based on selectors
             for (int j = 0; j < th->col_num; j++) {
-                if (select_row_by_cols(cols, th->col_name[j])) continue; 
+                if (selectors.size() && std::find(selectors.begin(), selectors.end(), std::string(th->col_name[j])) == selectors.end()) continue;
                 
                 if (th->col_type[j] == FIELD_TYPE_INT) {
-                    int s; memcpy(&s, buffer + i * size + th->col_offset[j], th->col_length[j]);
+                    int s; memcpy(&s, buffer + i * record_size + th->col_offset[j], th->col_length[j]);
                     row.push_back(std::to_string(s));
                 } else if (th->col_type[j] == FIELD_TYPE_FLOAT) {
-                    float s; memcpy(&s, buffer + i * size + th->col_offset[j], th->col_length[j]);
+                    float s; memcpy(&s, buffer + i * record_size + th->col_offset[j], th->col_length[j]);
                     row.push_back(std::to_string(s));
                 } else if (th->col_type[j] == FIELD_TYPE_VCHAR) {
                     char s[th->col_length[j]];
-                    memcpy(s, buffer + i * size + th->col_offset[j], th->col_length[j]);
+                    memcpy(s, buffer + i * record_size + th->col_offset[j], th->col_length[j]);
                     row.push_back(std::string(s));
                 }
             }
-            select.add_row(row);
-            rows_added++;
-        }
 
-        // 
+            select.add_row(row);
+            rows_selected++;
+        }
         free(buffer);
-        start += rows_per_read;
+        start_read += rows_per_read;
     }
 
 
-
-    // char *buffer = (char *)malloc(sizeof(char) * (size * total_rows));
-    // memset((void *)buffer, 0, size * total_rows);
-    // tb->select_record(buffer, size, total_rows);
-
-   
-
-   
-    // for (int i = 0; i < vec.size(); i++) {
-    //     std::cout << vec[i].first << vec[i].second << "\n";
-    // }
-
-
-
-    // style header
     for (size_t i = 0; i < total_cols_selected + 1; ++i) {
         select[0][i].format()
         .font_color(tabulate::Color::yellow)
@@ -451,7 +410,8 @@ void dbms::select_rows(std::string cols, std::string where, const char * table_n
         .font_style({tabulate::FontStyle::bold});
     }
     std::cout << select << "\n";
-    // free(buffer);
+    std::string selected_message = "selected " + std::to_string(rows_selected) + " record(s) out of " + std::to_string(total_records) + " records";
+    dprint(selected_message.c_str());
 }
 
 void dbms::update_rows() {}

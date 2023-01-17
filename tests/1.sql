@@ -1,8 +1,9 @@
+SHOW DATABASES;
+DROP DATABASE db;
+
 CREATE DATABASE db;
 SHOW DATABASE db;
-CREATE DATABASE db1;
-CREATE DATABASE db2; 
-CREATE DATABASE db3;
+
 USE db;
 CREATE TABLE Persons ( 
 	ID INT NOT NULL, 
@@ -13,26 +14,31 @@ CREATE TABLE Persons (
 	FirstName VARCHAR(20) DEFAULT 'firstname',
 	PRIMARY KEY (ID)
 );
-CREATE TABLE Ident (
-    ID INT,
-    Key VARCHAR(32)
-);
+
+SHOW TABLES;
+
+
 SHOW DATABASE db;
-
-
+ 
 DESC Persons;
-DESC Ident;
+
 INSERT INTO Persons VALUES 
-	(420, 69, 12, 1.0, 'It', 'Blaze'), 
-	(69, 420, 12, 0.0, 'Stupid', 'Very'),
+	(420, 69, 12, 99.0, 'It', 'Blaze'), 
+	(69, 420, 12, 69.0, 'Stupid', 'Very'),
+	(69, 420, 12, 49.99, 'Gay', 'Big'),
+	(69, 420, 12, 30.99, 'Balls', 'Ligma'),
 	(100, 100, 100, 100, 'Is', 'Not', 'Allowed'),
 	('number', 100, 100, 100, 'Inorrect', 'Type'),
 	(100, 69, 12, 1.0, 'It', '0123456789012345678');
-INSERT INTO Ident VALUES 
-	(1, 'keys');
 
 SELECT * FROM Persons;
 SELECT LastName, FirstName, Grade FROM Persons;
+SELECT * FROM Persons WHERE Grade >= 50.0;
+SELECT * FROM Persons WHERE Grade <= 50.0 AND FirstName = 'Big';
 
-SHOW DATABASE db;
+
+DELETE FROM Persons WHERE Grade <= 50;
+
+SELECT * FROM Persons;
+
 

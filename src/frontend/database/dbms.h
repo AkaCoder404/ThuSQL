@@ -8,6 +8,12 @@
 // 
 #include "../parser/SQLBaseVisitor.h"
 
+struct WhereContext {
+    std::string column;
+    std::string op;
+    std::string value;
+};
+
 
 class dbms {
 private:
@@ -31,6 +37,7 @@ public:
 
     /* table */
     void create_table(table_header *header);
+    void show_tables();
     void show_table(const char *table_name);
     void drop_table(const char *table_name);
 
@@ -40,8 +47,8 @@ public:
 
     /* TODO records/rows */
     void insert_rows(SQLParser::Insert_into_tableContext *ctx);
-    void delete_rows(std::string where, const char *table_name);
-    void select_rows(std::string cols, std::string where, const char *table_name);
+    void delete_rows(const char *table_name, std::vector<struct WhereContext> &where);
+    void select_rows(std::vector<std::string> selectors, std::vector<struct WhereContext>& where, const char *table_name);
     void update_rows();
 
     static dbms* get_instance() {

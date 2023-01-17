@@ -14,10 +14,12 @@ public:
     vprint("visit program");
     return this->visitChildren(ctx);
   }
+
   std::any visitStatement(SQLParser::StatementContext* ctx) override {
     vprint("visit statement");
     return this->visitChildren(ctx);
   }
+
   std::any visitCreate_db(SQLParser::Create_dbContext* ctx) override {
     vprint("create db");
     const char *database_name = (ctx->Identifier()->toString()).c_str();
@@ -25,12 +27,14 @@ public:
     dprint("Created database");
     return this->visitChildren(ctx);
   }
+
   std::any visitDrop_db(SQLParser::Drop_dbContext *ctx) override {
     vprint("visit drop db");
     const char *database_name = (ctx->Identifier()->toString()).c_str();
     dbms::get_instance()->drop_database(database_name);
     return this->visitChildren(ctx);
   }
+
   std::any visitShow_db(SQLParser::Show_dbContext *ctx) override {
     vprint("visit show db");
     const char *database_name = (ctx->Identifier()->toString()).c_str();
@@ -38,6 +42,7 @@ public:
     dprint("Showed database");
     return this->visitChildren(ctx);
   }
+
   std::any visitShow_dbs(SQLParser::Show_dbsContext *ctx) override {
     vprint("visit show dbs");
     dbms::get_instance()->show_databases();
@@ -55,25 +60,26 @@ public:
 
   std::any visitShow_tables(SQLParser::Show_tablesContext *ctx) override {
     vprint("visit show tables");
+    dbms::get_instance()->show_tables();
     return this->visitChildren(ctx);
   }
 
-    std::any visitShow_indexes(SQLParser::Show_indexesContext *ctx) override {
+  std::any visitShow_indexes(SQLParser::Show_indexesContext *ctx) override {
     vprint("visit show indexes");
     return this->visitChildren(ctx);
   }
 
-    std::any visitLoad_data(SQLParser::Load_dataContext *ctx) override {
+  std::any visitLoad_data(SQLParser::Load_dataContext *ctx) override {
     vprint("visit load data");
     return this->visitChildren(ctx);
   }
 
-    std::any visitDump_data(SQLParser::Dump_dataContext *ctx) override {
+  std::any visitDump_data(SQLParser::Dump_dataContext *ctx) override {
     vprint("visit dump data");
     return this->visitChildren(ctx);
   }
 
-    std::any visitCreate_table(SQLParser::Create_tableContext *ctx) override {
+  std::any visitCreate_table(SQLParser::Create_tableContext *ctx) override {
     vprint("visit create table");
     const char *table_name = (ctx->Identifier()->toString()).c_str();
     table_header *header = new table_header;
@@ -87,14 +93,14 @@ public:
     return this->visitChildren(ctx);
   }
 
-    std::any visitDrop_table(SQLParser::Drop_tableContext *ctx) override {
+  std::any visitDrop_table(SQLParser::Drop_tableContext *ctx) override {
     vprint("visit drop table");
     const char *table_name = (ctx->Identifier()->toString()).c_str();
     dbms::get_instance()->drop_table(table_name);
     return this->visitChildren(ctx);
   }
 
-    std::any visitDescribe_table(SQLParser::Describe_tableContext *ctx) override {
+  std::any visitDescribe_table(SQLParser::Describe_tableContext *ctx) override {
     vprint("visit describe table");
     const char *table_name = (ctx->Identifier()->toString()).c_str();
     dbms::get_instance()->show_table(table_name);
@@ -102,7 +108,7 @@ public:
     return this->visitChildren(ctx);
   }
 
-    std::any visitInsert_into_table(SQLParser::Insert_into_tableContext *ctx) override {
+  std::any visitInsert_into_table(SQLParser::Insert_into_tableContext *ctx) override {
     vprint("visit insert into table");
     const char *table_name = (ctx->Identifier()->toString()).c_str();
     dbms::get_instance()->insert_rows(ctx);
@@ -113,9 +119,28 @@ public:
 
   std::any visitDelete_from_table(SQLParser::Delete_from_tableContext *ctx) override {
     vprint("visit delete from table");  // DELETE FROM table_name WHERE
-    std::string table_name = ctx->children.at(2)->getText();
-    std::string where = ctx->children.at(4)->getText();
-    dbms::get_instance()->delete_rows(where, table_name.c_str());
+    // table identifier
+    std::string table_name = ctx->Identifier()->getText();
+
+    // handle where clause
+    std::vector<struct WhereContext> where_clause_context;
+    if (ctx->where_and_clause()) { 
+      std::vector<SQLParser::Where_clauseContext *, 
+                  std::allocator<SQLParser::Where_clauseContext *>> 
+                  where_and_clause = ctx->where_and_clause()->where_clause();
+                  
+
+      for (auto e : where_and_clause) {
+        struct WhereContext temp;  
+        temp.column = e->children.at(0)->getText();
+        temp.op =  e->children.at(1)->getText();
+        temp.value = e->children.at(2)->getText();
+        where_clause_context.push_back(temp);
+      }
+    }
+
+    dbms::get_instance()->delete_rows(table_name.c_str(), where_clause_context);
+    return NULL;
     return this->visitChildren(ctx);
   }
 
@@ -124,186 +149,225 @@ public:
     return this->visitChildren(ctx);
   }
 
-  //  std::any visitSelect_table_(SQLParser::Select_table_Context *ctx) override {
-  //   vprint("visit select table_");
-  //   // const char *table_name = ctx->getText().c_str();
-  //   // printf("%s\n", &table_name);
-  //   std::string tb_name = ctx->getText();
-  //   std::cout << ctx->getText() << "\n";
-  //   return this->visitChildren(ctx);
-  // }
-
-    std::any visitSelect_table(SQLParser::Select_tableContext *ctx) override {
-    vprint("visit select table");
-    // TODO specific col select, nested query,
-    std::string table_name = ctx->identifiers()->getText();
-    std::string cols = ctx->children.at(1)->getText();
-    std::string where;
-
-    // TODO handle nested selects?
-    // WHERE 
-    if (ctx->children.size() > 4) {
-      // WHERE children
-      // for (auto &e : ctx->children.at(5)->children) {
-      //   std::cout << e->getText() << " ";
-      // }
-      where = ctx->children.at(5)->getText();
-    }
-
-    // COLS to be selected
-    for (int i = 0; i < cols.length(); i++) {
-      if (cols[i] == ',') {
-        cols.insert(i, "\"");
-        cols.insert(i+2,"\"");
-        i+=2;
-      }
-    }
-    cols = "\"" + cols + "\"";
-    dbms::get_instance()->select_rows(cols, where, table_name.c_str());
+   std::any visitSelect_table_(SQLParser::Select_table_Context *ctx) override {
+    vprint("visit select table_");
+    // const char *table_name = ctx->getText().c_str();
+    // printf("%s\n", &table_name);
+    // std::string tb_name = ctx->getText();
+    // std::cout << ctx->getText() << "\n";
     return this->visitChildren(ctx);
   }
 
-    std::any visitAlter_add_index(SQLParser::Alter_add_indexContext *ctx) override {
+  std::any visitSelect_table(SQLParser::Select_tableContext *ctx) override {
+    vprint("visit select table");
+
+
+    // later handle multiple identifiers? (multiple table names?)
+    antlr4::tree::TerminalNode * table_name = ctx->identifiers()->Identifier().at(0);
+    std::cout << table_name->getText() << "\n";
+    
+    
+    // get selectors and put into vector of strings
+    SQLParser::SelectorsContext *selectors_context = ctx->selectors();
+    // SQLParser::SelectorContext *selector_context = ctx->selectors()->selector();
+    std::vector<std::string> selectors;
+    for (auto e : selectors_context->selector()) {
+      selectors.push_back(e->getText());
+    }
+
+
+    // handle where clause, TODO: support AND, OR, NOT clause relationship
+    // std::cout << "where: " << ctx->where_and_clause() << "\n";
+    // vector<column, operator, expression>
+    std::vector<struct WhereContext> where_clause_context;
+    if (ctx->where_and_clause()) { 
+      std::vector<SQLParser::Where_clauseContext *, 
+                  std::allocator<SQLParser::Where_clauseContext *>> 
+                  where_and_clause = ctx->where_and_clause()->where_clause();
+                  
+
+      for (auto e : where_and_clause) {
+        struct WhereContext temp;  
+        temp.column = e->children.at(0)->getText();
+        temp.op =  e->children.at(1)->getText();
+        temp.value = e->children.at(2)->getText();
+        where_clause_context.push_back(temp);
+      }
+    }
+
+    // print stuff
+    // std::cout << "selectors: ";
+    // for (int i = 0; i < selectors.size(); i++) {
+    //   std::cout << selectors[i] << " | ";
+    // }
+    // std::cout << "\n";
+    // std::cout << "where: ";
+    // for (int i = 0; i < where_clause_context.size(); i++) {
+    //   std::cout << "<" << where_clause_context[i].column << "," <<
+    //                       where_clause_context[i].op     << "," <<
+    //                       where_clause_context[i].value  << ">, ";
+    // }
+
+    dbms::get_instance()->select_rows(selectors, where_clause_context, table_name->getText().c_str());
+    return this->visitChildren(ctx);
+  }
+
+  std::any visitAlter_add_index(SQLParser::Alter_add_indexContext *ctx) override {
     vprint("visit alter add index");
     return this->visitChildren(ctx);
   }
 
-    std::any visitAlter_drop_index(SQLParser::Alter_drop_indexContext *ctx) override {
+  std::any visitAlter_drop_index(SQLParser::Alter_drop_indexContext *ctx) override {
     vprint("visit alter drop index");
     return this->visitChildren(ctx);
   }
 
-    std::any visitAlter_table_drop_pk(SQLParser::Alter_table_drop_pkContext *ctx) override {
+  std::any visitAlter_table_drop_pk(SQLParser::Alter_table_drop_pkContext *ctx) override {
     vprint("visit alter table drop pk");
     return this->visitChildren(ctx);
   }
 
-    std::any visitAlter_table_drop_foreign_key(SQLParser::Alter_table_drop_foreign_keyContext *ctx) override {
+  std::any visitAlter_table_drop_foreign_key(SQLParser::Alter_table_drop_foreign_keyContext *ctx) override {
     vprint("visit alter table drop foreign key");
     return this->visitChildren(ctx);
   }
 
-    std::any visitAlter_table_add_pk(SQLParser::Alter_table_add_pkContext *ctx) override {
+  std::any visitAlter_table_add_pk(SQLParser::Alter_table_add_pkContext *ctx) override {
     vprint("visit alter table add pk");
     return this->visitChildren(ctx);
   }
 
-    std::any visitAlter_table_add_foreign_key(SQLParser::Alter_table_add_foreign_keyContext *ctx) override {
+  std::any visitAlter_table_add_foreign_key(SQLParser::Alter_table_add_foreign_keyContext *ctx) override {
     vprint("visit alter table add foreign key");
     return this->visitChildren(ctx);
   }
 
-    std::any visitAlter_table_add_unique(SQLParser::Alter_table_add_uniqueContext *ctx) override {
+  std::any visitAlter_table_add_unique(SQLParser::Alter_table_add_uniqueContext *ctx) override {
     vprint("visit alter table add unique");
     return this->visitChildren(ctx);
   }
 
-    std::any visitField_list(SQLParser::Field_listContext *ctx) override {
+  std::any visitField_list(SQLParser::Field_listContext *ctx) override {
     vprint("visit field list");
     return this->visitChildren(ctx);
   }
 
-    std::any visitNormal_field(SQLParser::Normal_fieldContext *ctx) override {
+  std::any visitNormal_field(SQLParser::Normal_fieldContext *ctx) override {
     vprint("visit normal field");
     return this->visitChildren(ctx);
   }
 
-    std::any visitPrimary_key_field(SQLParser::Primary_key_fieldContext *ctx) override {
+  std::any visitPrimary_key_field(SQLParser::Primary_key_fieldContext *ctx) override {
     vprint("visit primary key field");
     return this->visitChildren(ctx);
   }
 
-    std::any visitForeign_key_field(SQLParser::Foreign_key_fieldContext *ctx) override {
+  std::any visitForeign_key_field(SQLParser::Foreign_key_fieldContext *ctx) override {
     vprint("visit foreign key field");
     return this->visitChildren(ctx);
   }
 
-    std::any visitType_(SQLParser::Type_Context *ctx) override {
+  std::any visitType_(SQLParser::Type_Context *ctx) override {
     vprint("visit type");
     return this->visitChildren(ctx);
   }
 
-    std::any visitValue_lists(SQLParser::Value_listsContext *ctx) override {
+  std::any visitValue_lists(SQLParser::Value_listsContext *ctx) override {
     vprint("visit value lists");
     return this->visitChildren(ctx);
   }
 
-    std::any visitValue_list(SQLParser::Value_listContext *ctx) override {
+  std::any visitValue_list(SQLParser::Value_listContext *ctx) override {
     vprint("visit value list");
     return this->visitChildren(ctx);
   }
 
-    std::any visitValue(SQLParser::ValueContext *ctx) override {
+  std::any visitValue(SQLParser::ValueContext *ctx) override {
     vprint("visit value");
+    std::cout << ctx->getText() << "\n";
     return this->visitChildren(ctx);
   }
 
-    std::any visitWhere_and_clause(SQLParser::Where_and_clauseContext *ctx) override {
+  std::any visitWhere_and_clause(SQLParser::Where_and_clauseContext *ctx) override {
     vprint("visit where and clause");
+    std::cout << ctx->getText() << "\n";
     return this->visitChildren(ctx);
   }
 
-    std::any visitWhere_operator_expression(SQLParser::Where_operator_expressionContext *ctx) override {
+  std::any visitWhere_operator_expression(SQLParser::Where_operator_expressionContext *ctx) override {
     vprint("where operator expressions");
+    std::cout << ctx->getText() << "\n";
     return this->visitChildren(ctx);
   }
 
-    std::any visitWhere_operator_select(SQLParser::Where_operator_selectContext *ctx) override {
+  std::any visitWhere_operator_select(SQLParser::Where_operator_selectContext *ctx) override {
     vprint("visit where operator select");
+    std::cout << ctx->getText() << "\n";
     return this->visitChildren(ctx);
   }
 
-    std::any visitWhere_null(SQLParser::Where_nullContext *ctx) override {
+  std::any visitWhere_null(SQLParser::Where_nullContext *ctx) override {
     vprint("visit where null");
     return this->visitChildren(ctx);
   }
 
-    std::any visitWhere_in_list(SQLParser::Where_in_listContext *ctx) override {
+  std::any visitWhere_in_list(SQLParser::Where_in_listContext *ctx) override {
     vprint("visit where in list");
     return this->visitChildren(ctx);
   }
 
-    std::any visitWhere_in_select(SQLParser::Where_in_selectContext *ctx) override {
+  std::any visitWhere_in_select(SQLParser::Where_in_selectContext *ctx) override {
     vprint("visit where in select");
     return this->visitChildren(ctx);
   }
 
-    std::any visitWhere_like_string(SQLParser::Where_like_stringContext *ctx) override {
+  std::any visitWhere_like_string(SQLParser::Where_like_stringContext *ctx) override {
     vprint("visit where like string");
     return this->visitChildren(ctx);
   }
 
-    std::any visitColumn(SQLParser::ColumnContext *ctx) override {
+  std::any visitColumn(SQLParser::ColumnContext *ctx) override {
     vprint("visit column");
+    std::cout << ctx->getText() << "\n";
     return this->visitChildren(ctx);
   }
 
-    std::any visitExpression(SQLParser::ExpressionContext *ctx) override {
+  std::any visitExpression(SQLParser::ExpressionContext *ctx) override {
+    vprint("visit expression");
+    std::cout << ctx->getText() << "\n";
     return this->visitChildren(ctx);
   }
 
-    std::any visitSet_clause(SQLParser::Set_clauseContext *ctx) override {
+  std::any visitSet_clause(SQLParser::Set_clauseContext *ctx) override {
+    vprint("visit set clause");
     return this->visitChildren(ctx);
   }
 
-    std::any visitSelectors(SQLParser::SelectorsContext *ctx) override {
+  std::any visitSelectors(SQLParser::SelectorsContext *ctx) override {
+    vprint("visit selectors");
     return this->visitChildren(ctx);
   }
 
-    std::any visitSelector(SQLParser::SelectorContext *ctx) override {
+  std::any visitSelector(SQLParser::SelectorContext *ctx) override {
+    vprint("visit selector");
+    std::cout << ctx->getText() << "\n";
     return this->visitChildren(ctx);
   }
 
-    std::any visitIdentifiers(SQLParser::IdentifiersContext *ctx) override {
+  std::any visitIdentifiers(SQLParser::IdentifiersContext *ctx) override {
     vprint("visit identifier");
+    std::cout << ctx->getText() << "\n";
     return this->visitChildren(ctx);
   }
 
-    std::any visitOperator_(SQLParser::Operator_Context *ctx) override {
+  std::any visitOperator_(SQLParser::Operator_Context *ctx) override {
+    vprint("visit operator");
+    std::cout << ctx->getText() << "\n";
     return this->visitChildren(ctx);
   }
 
-    std::any visitAggregator(SQLParser::AggregatorContext *ctx) override {
+  std::any visitAggregator(SQLParser::AggregatorContext *ctx) override {
+    vprint("visit aggregator");
     return this->visitChildren(ctx);
   }
 
