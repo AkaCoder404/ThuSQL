@@ -78,7 +78,7 @@ field_list
     ;
 
 field
-    : Identifier type_ ('NOT' Null)? ('DEFAULT' value)? ('PRIMARY' 'KEY')?                                              # normal_field
+    : Identifier type_ ('NOT' Null)? ('DEFAULT' value)? ('PRIMARY' 'KEY')?                            # normal_field
     | 'PRIMARY' 'KEY' (Identifier)? '(' identifiers ')'                                               # primary_key_field
     | 'FOREIGN' 'KEY' (Identifier)? '(' identifiers ')' 'REFERENCES' Identifier '(' identifiers ')'   # foreign_key_field
     ;

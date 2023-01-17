@@ -99,7 +99,6 @@ void dbms::insert_rows(SQLParser::Insert_into_tableContext *ctx) {
     tprint("Inserting rows");
     const char *table_name = ctx->Identifier()->getText().c_str();
     table* tb = curr_db->get_table(table_name);
-    
     table_header *th = tb->get_table_header_p();
 
     std::cout << "Inserting into " << th->table_name << "\n";
@@ -157,14 +156,12 @@ void dbms::insert_rows(SQLParser::Insert_into_tableContext *ctx) {
         // allocate 
         char *temp_record;
         int size = th->col_offset[th->col_num - 1] + th->col_length[th->col_num - 1];
-        std::cout << "size of record:" << size << "\n";
         temp_record = new char[size];
         
         // initialize
-        // TODO initialize defaults
+        // TODO: initialize defaults
         memset(temp_record, 0, size);
-        memcpy(temp_record, &th->auto_increment_row_id, 4); 
-        // std::cout << "init tmp record: " << th->auto_increment_row_id << "\n";
+        memcpy(temp_record, &th->auto_increment_row_id, 4);
         th->auto_increment_row_id++;
         th->records_num++;
         // tb->increase_record_count();
@@ -195,7 +192,6 @@ void dbms::insert_rows(SQLParser::Insert_into_tableContext *ctx) {
     }
     std::string message = "Insert OK " + std::to_string(success) + " out of " + std::to_string(total);
     dprint(message.c_str());
-    // std::cout << "Successfully inserted " << success << " out of " << total << "\n";
 }
 
 bool check_where_op (std::string op, float value2, float value1) {
@@ -356,14 +352,14 @@ void dbms::select_rows(std::vector<std::string> selectors, std::vector<struct Wh
     int rows_per_read = RECORDS_PER_READ;
     int rows_selected = 0;
 
-
+    char *buffer = (char *)malloc(sizeof(char) * (record_size * rows_per_read));
     while (start_read < total_records && rows_selected < SELECT_LIMIT) {
         // if remaining records is less than the number of records_per_read;
         int remaining_records = total_records - start_read;
         if (remaining_records < rows_per_read) rows_per_read = remaining_records;
 
         // allocate and read from mem
-        char *buffer = (char *)malloc(sizeof(char) * (record_size * rows_per_read));
+        
         memset((void *)buffer, 0, record_size * rows_per_read);
         tb->select_record(start_read, buffer, record_size, rows_per_read);
 
@@ -398,9 +394,10 @@ void dbms::select_rows(std::vector<std::string> selectors, std::vector<struct Wh
             select.add_row(row);
             rows_selected++;
         }
-        free(buffer);
+        
         start_read += rows_per_read;
     }
+    free(buffer);
 
 
     for (size_t i = 0; i < total_cols_selected + 1; ++i) {
@@ -441,27 +438,25 @@ void dbms::update_rows(const char* table_name, std::vector<struct WhereContext>&
         }
     }
 
-
-
-
     // start reading
     int start_read = 0;
     int records_per_read = RECORDS_PER_READ;
     int rows_updated = 0;
     int total_records = th->records_num;
 
+    char *buffer = (char *)malloc(sizeof(char) * (record_size * records_per_read));
     while (start_read < total_records) {
         // if remaining records is less than the number of records_per_read
         int remaining_records = total_records - start_read;
         if (remaining_records < records_per_read) records_per_read = remaining_records;
 
         // allocate and read from mem
-        char *buffer = (char *)malloc(sizeof(char) * (record_size * records_per_read));
+        // char *buffer = (char *)malloc(sizeof(char) * (record_size * records_per_read));
         memset((void *)buffer, 0, record_size * records_per_read);
         tb->select_record(start_read, buffer, record_size, records_per_read);
 
         // scan through all records
-         for (int i = 0; i < records_per_read; i++) {  
+        for (int i = 0; i < records_per_read; i++) {  
             int rowid; memcpy(&rowid, buffer + i * record_size, 4);
 
             // check row matches where context
@@ -489,9 +484,12 @@ void dbms::update_rows(const char* table_name, std::vector<struct WhereContext>&
             tb->update_record(start_read, buffer, i, record_size, records_per_read);
             rows_updated++;
         }
-        free(buffer);
+        
+        
+    
         start_read += records_per_read;
         std::string selected_message = "updated " + std::to_string(rows_updated) + " record(s) out of " + std::to_string(total_records) + " records";
         dprint(selected_message.c_str());
     }
+    free(buffer);
 }
