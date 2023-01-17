@@ -91,7 +91,7 @@ bool PageFileSystem::read(int start, char *buffer, int size, int count) {
 
 bool PageFileSystem::row_delete(int total_row, int rowId, int size) {
     std::cout << "row_delete called, physically deleting row id of: " << rowId-1 << std::endl;
-    char* endingRow = new char[56];
+    char* endingRow = new char[size-4];
     lseek(fm->fd[fileId], (size*total_row)-(size-4), SEEK_SET);
     ::read(fm->fd[fileId], endingRow, size-4);
     lseek(fm->fd[fileId], ((rowId-1)*size)+4, SEEK_SET);
@@ -100,8 +100,17 @@ bool PageFileSystem::row_delete(int total_row, int rowId, int size) {
     return true;
 }
 
-bool PageFileSystem::row_update(int rowId, int size) {
-
+bool PageFileSystem::row_update(int start, int rowId, int size, char *buffer) {
+    std::cout << "row_update called, physically updating rows based on buffer";
+    int buffer_index = rowId - start;
+    char* newRow = new char[size];
+    memcpy(newRow, buffer+buffer_index-1, size);
+    std::cout << "This is the new row: " << newRow << std::endl;
+    std::cout << "This is the current buffer : " << std::endl;
+    lseek(fm->fd[fileId], (rowId)*size, SEEK_SET);
+    ::write(fm->fd[fileId], newRow, size);
+    delete[] newRow;
+    return true;
 }
 
 bool PageFileSystem::mark_dirty() {

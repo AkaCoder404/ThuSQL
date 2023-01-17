@@ -45,7 +45,7 @@
 #define RECORDS_PER_READ 20
 
 /* display information */
-#define SELECT_LIMIT 10
+#define SELECT_LIMIT 20
 
 
 /* data types */

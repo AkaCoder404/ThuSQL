@@ -72,5 +72,5 @@ void table::delete_record(int total_row, int row_id, int size) {
 
 
 void table::update_record(int start, char *buffer, int row_id, int size, int count) {
-    pg->row_update(row_id, size);
+    pg->row_update(start, row_id, size, buffer);
 }

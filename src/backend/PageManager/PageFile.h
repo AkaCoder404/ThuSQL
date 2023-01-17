@@ -43,7 +43,7 @@ public:
     bool read_for_write();
     bool mark_dirty();
     bool row_delete(int total_row, int rowId, int size);
-    bool row_update(int rowId, int size);
+    bool row_update(int start, int rowId, int size, char *buffer);
 
     // 
     PageHeader page_headers[MAX_FILE_NUM];  // contains details about each page
