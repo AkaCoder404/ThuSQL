@@ -471,18 +471,14 @@ void dbms::update_rows(const char* table_name, std::vector<struct WhereContext>&
                 
             
                 if (th->col_type[j] == FIELD_TYPE_INT) {
-                    std::string s = (*it).value;
-                    const char *t = s.c_str();
+                    int t = std::stoi((*it).value);
                     memcpy(buffer + i * record_size + th->col_offset[j], &t,th->col_length[j]);
                 } else if (th->col_type[j] == FIELD_TYPE_FLOAT) {
-                    std::string s = (*it).value;
-                    const char *t = s.c_str();
+                    int t = std::stof((*it).value);
                     memcpy(buffer + i * record_size + th->col_offset[j], &t,th->col_length[j]);
                 } else if (th->col_type[j] == FIELD_TYPE_VCHAR) {
                     std::string s = (*it).value;
                     const char *t = s.c_str();
-                    std::cout << j << ":" <<  s <<  "\n";
-                    // memset(buffer + i * record_size + th->col_offset[j], 0, th->col_length[j]);
                     memcpy(buffer + i * record_size + th->col_offset[j], t, th->col_length[j]);
                 }
             }

@@ -101,12 +101,11 @@ bool PageFileSystem::row_delete(int total_row, int rowId, int size) {
 }
 
 bool PageFileSystem::row_update(int start, int rowId, int size, char *buffer) {
-    std::cout << "row_update called, physically updating rows based on buffer";
+    std::cout << "row_update called, physically updating rows based on buffer\n";
     int buffer_index = rowId - start;
     char* newRow = new char[size];
-    memcpy(newRow, buffer+buffer_index-1, size);
-    std::cout << "This is the new row: " << newRow << std::endl;
-    std::cout << "This is the current buffer : " << std::endl;
+
+    memcpy(newRow, buffer+(buffer_index * size), size);
     lseek(fm->fd[fileId], (rowId)*size, SEEK_SET);
     ::write(fm->fd[fileId], newRow, size);
     delete[] newRow;

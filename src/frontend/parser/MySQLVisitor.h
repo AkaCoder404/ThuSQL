@@ -159,7 +159,6 @@ public:
 
   std::any visitUpdate_table(SQLParser::Update_tableContext *ctx) override {  
     vprint("visit update table");
-    tprint("working on");
     // table identifier
     std::string table_name = ctx->Identifier()->getText();
     // handle set clause
@@ -171,8 +170,8 @@ public:
       struct SetContext temp;
       temp.column = set_clause->Identifier().at(count)->getText();
       temp.value = e->getText();
-      std::cout <<  set_clause->Identifier().at(count)->getText() << " ";
-      std::cout << e->getText() << "\n";  
+      // std::cout <<  set_clause->Identifier().at(count)->getText() << " ";
+      // std::cout << e->getText() << "\n";  
 
       set.push_back(temp);
       count++;
@@ -195,7 +194,6 @@ public:
       }
     }
 
-    tprint("working on");
     dbms::get_instance()->update_rows(table_name.c_str(), where_clause_context, set);
     return this->visitChildren(ctx);
   }
@@ -410,7 +408,6 @@ public:
 };
 
 bool MySQLVisitor::parse_table_header(table_header *header,SQLParser::Create_tableContext *ctx) {
-  tprint("working on");
   // copy table name over
   std::strncpy(header->table_name, (ctx->Identifier()->getText()).c_str(), MAX_TABLE_NAME_LEN);
   
@@ -418,20 +415,20 @@ bool MySQLVisitor::parse_table_header(table_header *header,SQLParser::Create_tab
   std::vector<SQLParser::FieldContext *, 
     std::allocator<SQLParser::FieldContext *>> field = field_list->field();
   
-  std::cout << "field list: " << field_list->getText() << "\n";
+  // std::cout << "field list: " << field_list->getText() << "\n";
 
   int col_number = 0;
   int col_offset = 4; // first four bytes of record is saved for rowid;
   
   for (SQLParser::FieldContext *e : field) {
-    std::cout << e->getText() << ": " << e->children.size()  << ": " << "\n";
+    // std::cout << e->getText() << ": " << e->children.size()  << ": " << "\n";
    
     // TODO: handle primary key
     if (e->getText().find("PRIMARYKEY(") != std::string::npos) {
       SQLParser::Primary_key_fieldContext *pk_context = (SQLParser::Primary_key_fieldContext *) e;
       
       // primary key list of identifiers
-      std::cout << "primary: " << pk_context->identifiers()->Identifier().size() << "\n";
+      // std::cout << "primary: " << pk_context->identifiers()->Identifier().size() << "\n";
       continue;
     }
 
@@ -439,16 +436,16 @@ bool MySQLVisitor::parse_table_header(table_header *header,SQLParser::Create_tab
     if (e->getText().find("FOREIGNKEY(") != std::string::npos) {
       SQLParser::Foreign_key_fieldContext *fk_context = (SQLParser::Foreign_key_fieldContext *) e;
       
-      // foreign key col
-      std::cout << "foreign:  " << fk_context->identifiers().size() << "\n";
+      // // foreign key col
+      // std::cout << "foreign:  " << fk_context->identifiers().size() << "\n";
 
-      // foreign key reference col (name of other tables cols)
-      std::cout << "foregin:  " << fk_context->Identifier().size() << "\n";
+      // // foreign key reference col (name of other tables cols)
+      // std::cout << "foregin:  " << fk_context->Identifier().size() << "\n";
       
       
-      for (auto * p : fk_context->identifiers()) {
-        std::cout << p->getText() << "\n";
-      }
+      // for (auto * p : fk_context->identifiers()) {
+      //   std::cout << p->getText() << "\n";
+      // }
 
       continue;
     }
@@ -459,13 +456,11 @@ bool MySQLVisitor::parse_table_header(table_header *header,SQLParser::Create_tab
     // col name
     std::string col_name = norm_context->Identifier()->getText();
     std::strncpy(header->col_name[col_number], col_name.c_str(), MAX_TABLE_NAME_LEN);
-   
-
-    std::cout << norm_context->Identifier()->getText() << "\n";
+    // std::cout << norm_context->Identifier()->getText() << "\n";
    
     //  col_type and col_offset
     std::string col_type = norm_context->type_()->getText();
-    std::cout << "col_type: " << norm_context->type_()->getText() << "\n";
+    // std::cout << "col_type: " << norm_context->type_()->getText() << "\n";
 
 
     if (col_type == "INT") {
@@ -499,13 +494,13 @@ bool MySQLVisitor::parse_table_header(table_header *header,SQLParser::Create_tab
     if (v_contex->Null()) {
       std::strncpy(header->default_values[col_number], "NULL", MAX_DEFAULT_LEN);
     } else if (v_contex->Integer()) {
-      std::cout << "INTEGER: " << v_contex->Integer()->getText() << "\n";
+      // std::cout << "INTEGER: " << v_contex->Integer()->getText() << "\n";
       std::strncpy(header->default_values[col_number], v_contex->Integer()->getText().c_str(), MAX_DEFAULT_LEN);
     } else if (v_contex->Float()) {
-      std::cout << "FLOAT: " << v_contex->Float()->getText() << "\n";
+      // std::cout << "FLOAT: " << v_contex->Float()->getText() << "\n";
       std::strncpy(header->default_values[col_number], v_contex->Float()->getText().c_str(), MAX_DEFAULT_LEN);
     } else if (v_contex->String()) {
-      std::cout << "VARCHAR(" << norm_context->type_()->Integer()->getText() << "): " << v_contex->String()->getText() << "\n";
+      // std::cout << "VARCHAR(" << norm_context->type_()->Integer()->getText() << "): " << v_contex->String()->getText() << "\n";
       std::strncpy(header->default_values[col_number], v_contex->String()->getText().c_str(), MAX_DEFAULT_LEN);
     } 
 
@@ -514,7 +509,5 @@ bool MySQLVisitor::parse_table_header(table_header *header,SQLParser::Create_tab
   }
   header->col_num = col_number;
   header->auto_increment_row_id = 1;
-
-  tprint("working on");
   return true;
 }
